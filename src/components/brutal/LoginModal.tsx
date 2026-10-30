@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import { X, User, Shield, Wrench, GraduationCap, CheckCircle2, ArrowRight, Lock, Key } from 'lucide-react';
 import type { UserRole } from '@/lib/domain/enums';
+import type { PersonaId } from '@/types/personas';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultSubdivision?: 'student' | 'management';
   currentRole: UserRole;
-  onSelectRole: (role: UserRole) => void;
+  onSelectRole: (role: UserRole, personaId?: PersonaId) => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -26,21 +27,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSelectPersona = (role: UserRole, label: string) => {
-    onSelectRole(role);
-    setFeedback(`Signed in as ${label}!`);
+  const handleSelectPersona = (role: UserRole, label: string, personaId?: PersonaId) => {
+    setFeedback(`Opening CRM Portal for ${label}...`);
     setTimeout(() => {
+      onSelectRole(role, personaId);
       setFeedback(null);
       onClose();
-    }, 600);
+    }, 400);
   };
 
   const handleManualLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (subdivision === 'student') {
-      handleSelectPersona('REQUESTER', 'Student');
+      handleSelectPersona('REQUESTER', 'Student (Aarav Patel)', 'student');
     } else {
-      handleSelectPersona('FACILITIES_ADMIN', 'Facilities Admin');
+      handleSelectPersona('FACILITIES_ADMIN', 'Super Admin (Chief Controller)', 'superadmin');
     }
   };
 
@@ -116,19 +117,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   Student & Faculty Gate
                 </h3>
                 <p className="text-xs text-zinc-600 font-medium mt-0.5">
-                  Report disruptions, track affected exam relocations, or review department classes.
+                  Access your personalized CRM dashboard, track query receipts, or review classroom continuity.
                 </p>
               </div>
 
               {/* 1-Click Persona Quick Select (Instant Judge Login) */}
               <div className="space-y-2.5">
                 <p className="text-[11px] font-black uppercase tracking-wider text-zinc-500">
-                  Instant Judge Personas (1-Click)
+                  Instant Judge Personas (1-Click Launch)
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Persona 1: Student */}
                   <div
-                    onClick={() => handleSelectPersona('REQUESTER', 'Student (Aarav Patel)')}
+                    onClick={() => handleSelectPersona('REQUESTER', 'Aarav Patel (Student)', 'student')}
                     className={`card-brutal p-3.5 bg-white cursor-pointer hover:bg-yellow-50/50 transition-all ${
                       currentRole === 'REQUESTER' ? 'ring-2 ring-[#FDE047] ring-offset-2' : ''
                     }`}
@@ -142,15 +143,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           <span className="text-xs font-black text-[#18181B]">Aarav Patel</span>
                           <span className="badge-sticker bg-[#FEF9C3] text-[9px] py-0 px-1.5">STUDENT</span>
                         </div>
-                        <p className="text-[11px] text-zinc-500 font-mono">Roll #22CS045 · CS301</p>
-                        <p className="text-[10px] text-emerald-700 font-bold mt-1">✓ File reports & track exams</p>
+                        <p className="text-[11px] text-zinc-500 font-mono">Roll #22CS045 · CSE</p>
+                        <p className="text-[10px] text-emerald-700 font-bold mt-1">✓ Launch Student CRM</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Persona 2: Faculty */}
                   <div
-                    onClick={() => handleSelectPersona('DEPARTMENT_MANAGER', 'Faculty / HOD (Dr. K. Raman)')}
+                    onClick={() => handleSelectPersona('DEPARTMENT_MANAGER', 'Dr. K. Raman (Faculty HOD)', 'teacher')}
                     className={`card-brutal p-3.5 bg-white cursor-pointer hover:bg-yellow-50/50 transition-all ${
                       currentRole === 'DEPARTMENT_MANAGER' ? 'ring-2 ring-[#FDE047] ring-offset-2' : ''
                     }`}
@@ -165,7 +166,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           <span className="badge-sticker bg-[#E0F2FE] text-[9px] py-0 px-1.5">FACULTY</span>
                         </div>
                         <p className="text-[11px] text-zinc-500 font-mono">HOD Electrical Eng</p>
-                        <p className="text-[10px] text-blue-700 font-bold mt-1">✓ Review & approve recovery</p>
+                        <p className="text-[10px] text-blue-700 font-bold mt-1">✓ Launch Teacher CRM</p>
                       </div>
                     </div>
                   </div>
@@ -203,14 +204,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     type="submit"
                     className="w-full py-2.5 btn-brutal-yellow text-xs font-black flex items-center justify-center gap-2 uppercase tracking-wide"
                   >
-                    <span>Log In to Student / Faculty Hub</span>
+                    <span>Log In to Student / Faculty CRM</span>
                     <ArrowRight className="w-4 h-4 stroke-[3]" />
                   </button>
                 </form>
 
                 {/* University SSO Button */}
                 <button
-                  onClick={() => handleSelectPersona('REQUESTER', 'University SSO')}
+                  onClick={() => handleSelectPersona('REQUESTER', 'Aarav Patel (SSO)', 'student')}
                   className="w-full mt-2.5 py-2 btn-brutal-outline text-xs font-black flex items-center justify-center gap-2"
                 >
                   <Lock className="w-3.5 h-3.5 text-zinc-600" />
@@ -231,19 +232,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   Management & Operations Gate
                 </h3>
                 <p className="text-xs text-zinc-600 font-medium mt-0.5">
-                  Execute repairs, verify evidence photos, approve parts, and manage SLA escalations.
+                  Execute repairs, update stages, inspect AI decision proofs, and manage inventory requisitions.
                 </p>
               </div>
 
               {/* 1-Click Persona Quick Select */}
               <div className="space-y-2.5">
                 <p className="text-[11px] font-black uppercase tracking-wider text-zinc-500">
-                  Instant Judge Personas (1-Click)
+                  Instant Judge Personas (1-Click Launch)
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {/* Persona 1: Technician */}
                   <div
-                    onClick={() => handleSelectPersona('TECHNICIAN', 'Technician (Rajesh Kumar)')}
+                    onClick={() => handleSelectPersona('TECHNICIAN', 'Rajesh Kumar (Technician)', 'technician')}
                     className={`card-brutal p-3 bg-white cursor-pointer hover:bg-emerald-50/50 transition-all ${
                       currentRole === 'TECHNICIAN' ? 'ring-2 ring-[#86EFAC] ring-offset-2' : ''
                     }`}
@@ -258,7 +259,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* Persona 2: Super Admin */}
                   <div
-                    onClick={() => handleSelectPersona('FACILITIES_ADMIN', 'Super Admin')}
+                    onClick={() => handleSelectPersona('FACILITIES_ADMIN', 'Chief Controller (Super Admin)', 'superadmin')}
                     className={`card-brutal p-3 bg-white cursor-pointer hover:bg-emerald-50/50 transition-all ${
                       currentRole === 'FACILITIES_ADMIN' ? 'ring-2 ring-[#86EFAC] ring-offset-2' : ''
                     }`}
@@ -273,7 +274,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* Persona 3: Procurement Approver */}
                   <div
-                    onClick={() => handleSelectPersona('PROCUREMENT_APPROVER', 'Procurement Approver')}
+                    onClick={() => handleSelectPersona('PROCUREMENT_APPROVER', 'S. Venkatesh (Inventory Lead)', 'inventory')}
                     className={`card-brutal p-3 bg-white cursor-pointer hover:bg-emerald-50/50 transition-all ${
                       currentRole === 'PROCUREMENT_APPROVER' ? 'ring-2 ring-[#86EFAC] ring-offset-2' : ''
                     }`}
@@ -315,7 +316,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     type="submit"
                     className="w-full py-2.5 btn-brutal-green text-xs font-black flex items-center justify-center gap-2 uppercase tracking-wide"
                   >
-                    <span>Enter Management Operations Center</span>
+                    <span>Enter Management Operations CRM</span>
                     <ArrowRight className="w-4 h-4 stroke-[3]" />
                   </button>
                 </form>

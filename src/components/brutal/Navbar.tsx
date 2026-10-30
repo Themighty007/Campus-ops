@@ -1,12 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Shield, User, Wrench, Plus, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Shield, User, Wrench, Plus, RotateCcw, AlertTriangle, LayoutDashboard } from 'lucide-react';
 import type { UserRole } from '@/lib/domain/enums';
+import type { PersonaId } from '@/types/personas';
 
 interface NavbarProps {
   currentRole: UserRole;
+  activePersonaId?: PersonaId;
   onOpenLogin: (subdivision: 'student' | 'management') => void;
+  onOpenDashboard?: () => void;
   onOpenReport: () => void;
   onResetDemo: () => void;
   onOpenChaos: () => void;
@@ -15,7 +18,9 @@ interface NavbarProps {
 
 export const BrutalNavbar: React.FC<NavbarProps> = ({
   currentRole,
+  activePersonaId,
   onOpenLogin,
+  onOpenDashboard,
   onOpenReport,
   onResetDemo,
   onOpenChaos,
@@ -24,7 +29,7 @@ export const BrutalNavbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-[#FAF9F5]/90 backdrop-blur-sm border-b-2 border-[#18181B] px-4 lg:px-8 py-3.5">
       <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
-        {/* Brand Logo & Name matching Reference Image 1 & 3 */}
+        {/* Brand Logo & Name */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#FDE047] border-2 border-[#18181B] rounded-xl flex items-center justify-center shadow-brutal-sm">
             <Shield className="w-5 h-5 text-[#18181B] stroke-[2.5]" />
@@ -66,6 +71,18 @@ export const BrutalNavbar: React.FC<NavbarProps> = ({
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
             <span className="hidden sm:inline">REPORT</span>
           </button>
+
+          {/* Direct Launch CRM Dashboard Button */}
+          {onOpenDashboard && (
+            <button
+              onClick={onOpenDashboard}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#E0F2FE] hover:bg-[#BAE6FD] border-2 border-[#18181B] rounded-lg text-xs font-black text-[#18181B] shadow-brutal-sm transition-transform"
+              title="Open your personalized CRM dashboard"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">MY CRM DASHBOARD</span>
+            </button>
+          )}
 
           {/* TWO MAIN LOGIN PORTALS REQUESTED BY USER */}
           <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l-2 border-[#18181B]/20">

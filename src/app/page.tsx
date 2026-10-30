@@ -8,10 +8,25 @@ import { BlastRadiusCockpit } from '@/components/brutal/BlastRadiusCockpit';
 import { LoginModal } from '@/components/brutal/LoginModal';
 import { ReportIssueModal } from '@/components/brutal/ReportIssueModal';
 import { BrutalFooter } from '@/components/brutal/Footer';
+import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { StudentDashboard } from '@/components/dashboard/StudentDashboard';
+import { TeacherDashboard } from '@/components/dashboard/TeacherDashboard';
+import { TechnicianDashboard } from '@/components/dashboard/TechnicianDashboard';
+import { SuperAdminDashboard } from '@/components/dashboard/SuperAdminDashboard';
+import { InventoryDashboard } from '@/components/dashboard/InventoryDashboard';
+import { DEMO_PERSONAS, PersonaId } from '@/types/personas';
 import type { UserRole } from '@/lib/domain/enums';
 
 export default function HomePage() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('FACILITIES_ADMIN');
+  // Navigation & View Mode: 'landing' or 'dashboard'
+  const [viewMode, setViewMode] = useState<'landing' | 'dashboard'>('landing');
+  const [activePersonaId, setActivePersonaId] = useState<PersonaId>('student');
+  const [dashboardTab, setDashboardTab] = useState<string>('overview');
+
+  // Backend Role state (synced with active persona)
+  const [currentRole, setCurrentRole] = useState<UserRole>(DEMO_PERSONAS.student.role);
+
+  // Live Incident & Cockpit State
   const [incidents, setIncidents] = useState<any[]>([]);
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [blastRadius, setBlastRadius] = useState<any>(null);
@@ -22,6 +37,14 @@ export default function HomePage() {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginSubdivision, setLoginSubdivision] = useState<'student' | 'management'>('student');
   const [reportModalOpen, setReportModalOpen] = useState(false);
+
+  // Sync role whenever activePersonaId changes
+  useEffect(() => {
+    const persona = DEMO_PERSONAS[activePersonaId];
+    if (persona) {
+      setCurrentRole(persona.role);
+    }
+  }, [activePersonaId]);
 
   // Header factory to pass active persona role to backend
   const getHeaders = useCallback(
@@ -39,7 +62,6 @@ export default function HomePage() {
       const data = await res.json();
       if (data.incidents) {
         setIncidents(data.incidents);
-        // Default select the first incident if none selected
         if (!selectedIncidentId && data.incidents.length > 0) {
           setSelectedIncidentId(data.incidents[0].id);
         }
@@ -173,19 +195,108 @@ export default function HomePage() {
     return data;
   };
 
+  // Handler: Login persona selection -> immediately enters dashboard!
+  const handleSelectPersonaFromModal = (role: UserRole, personaId?: PersonaId) => {
+    if (personaId) {
+      setActivePersonaId(personaId);
+      setCurrentRole(DEMO_PERSONAS[personaId].role);
+    } else {
+      setCurrentRole(role);
+    }
+    setViewMode('dashboard');
+    setDashboardTab('overview');
+  };
+
+  // Active persona profile
+  const currentPersona = DEMO_PERSONAS[activePersonaId];
+
   // Currently selected incident object
   const selectedIncident =
     incidents.find((i) => i.id === selectedIncidentId) || incidents[0] || null;
 
+  // =========================================================================
+  // VIEW MODE A: ROLE-SPECIFIC CRM DASHBOARD (When logged in)
+  // =========================================================================
+  if (viewMode === 'dashboard') {
+    return (
+      <DashboardLayout
+        currentPersona={currentPersona}
+        onSwitchPersona={(id) => {
+          setActivePersonaId(id);
+          setCurrentRole(DEMO_PERSONAS[id].role);
+        }}
+        onExitToLanding={() => setViewMode('landing')}
+        activeTab={dashboardTab}
+        onSelectTab={(tab) => setDashboardTab(tab)}
+      >
+        {/* Render role dashboard based on activePersonaId or tab */}
+        {dashboardTab === 'cockpit' ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-black text-[#18181B] uppercase">
+                Deterministic Blast Radius & Recovery Cockpit
+              </h2>
+              <button
+                onClick={() => setDashboardTab('overview')}
+                className="px-3 py-1.5 bg-white border border-black rounded-lg text-xs font-bold"
+              >
+                ← Back to Overview
+              </button>
+            </div>
+            {selectedIncident && (
+              <BlastRadiusCockpit
+                incident={selectedIncident}
+                blastRadius={blastRadius}
+                plans={plans}
+                currentRole={currentRole}
+                onGeneratePlans={handleGeneratePlans}
+                onApprovePlan={handleApprovePlan}
+              />
+            )}
+          </div>
+        ) : (
+          <>
+            {activePersonaId === 'student' && (
+              <StudentDashboard persona={currentPersona} />
+            )}
+            {activePersonaId === 'teacher' && (
+              <TeacherDashboard persona={currentPersona} />
+            )}
+            {activePersonaId === 'technician' && (
+              <TechnicianDashboard
+                persona={currentPersona}
+                onWorkOrderCompleted={() => fetchIncidents()}
+              />
+            )}
+            {activePersonaId === 'superadmin' && (
+              <SuperAdminDashboard
+                persona={currentPersona}
+                onOpenCockpit={() => setDashboardTab('cockpit')}
+              />
+            )}
+            {activePersonaId === 'inventory' && (
+              <InventoryDashboard persona={currentPersona} />
+            )}
+          </>
+        )}
+      </DashboardLayout>
+    );
+  }
+
+  // =========================================================================
+  // VIEW MODE B: PUBLIC LANDING PAGE & DISRUPTION RADAR
+  // =========================================================================
   return (
     <div className="min-h-screen flex flex-col bg-grid-paper">
       {/* 1. TOP NAVBAR WITH TWO SUBDIVISION LOGIN BUTTONS */}
       <BrutalNavbar
         currentRole={currentRole}
+        activePersonaId={activePersonaId}
         onOpenLogin={(sub) => {
           setLoginSubdivision(sub);
           setLoginModalOpen(true);
         }}
+        onOpenDashboard={() => setViewMode('dashboard')}
         onOpenReport={() => setReportModalOpen(true)}
         onResetDemo={handleResetDemo}
         onOpenChaos={() => {
@@ -195,7 +306,7 @@ export default function HomePage() {
         activeCount={incidents.filter((i) => !['RESOLVED', 'CLOSED'].includes(i.status)).length}
       />
 
-      {/* 2. HERO SECTION RECREATING REFERENCE IMAGE 3 (Cassette Tapes, Highlighter, Stickers) */}
+      {/* 2. HERO SECTION RECREATING REFERENCE IMAGE 3 (Cassette Tapes, Highlighter, Dual Track) */}
       <LandingHero
         onOpenStudentLogin={() => {
           setLoginSubdivision('student');
@@ -250,7 +361,7 @@ export default function HomePage() {
         onClose={() => setLoginModalOpen(false)}
         defaultSubdivision={loginSubdivision}
         currentRole={currentRole}
-        onSelectRole={(role) => setCurrentRole(role)}
+        onSelectRole={handleSelectPersonaFromModal}
       />
 
       {/* (b) Natural Language Report Modal */}
