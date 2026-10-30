@@ -2,71 +2,212 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  --radius: 0.5rem;
-  --p1: 0 84.2% 60.2%;
-  --p2: 25 95.4% 53.1%;
-  --p3: 47.9 95.8% 53.1%;
-  --p4: 142.1 76.2% 36.3%;
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #FAF9F5;
+    color: #111111;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+  }
+
+  /* Millimeter Graph Grid Paper Background */
+  .bg-grid-paper {
+    background-color: #FAF9F5;
+    background-image: 
+      linear-gradient(to right, rgba(24, 24, 27, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(24, 24, 27, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Dark Graph Grid for Footer */
+  .bg-grid-dark {
+    background-color: #0A0A0A;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
 }
 
-.dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 48%;
+/* Neo-Brutalist Card Textures matching Reference Images */
+.card-brutal {
+  background-color: #FFFFFF;
+  border: 2px solid #18181B;
+  border-radius: 14px;
+  box-shadow: 4px 4px 0px 0px #18181B;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+.card-brutal:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0px 0px #18181B;
 }
 
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  -webkit-font-smoothing: antialiased;
+.card-brutal-static {
+  background-color: #FFFFFF;
+  border: 2px solid #18181B;
+  border-radius: 14px;
+  box-shadow: 5px 5px 0px 0px #18181B;
 }
 
-/* Severity badge colors */
-.severity-P1 { @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300; }
-.severity-P2 { @apply bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300; }
-.severity-P3 { @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300; }
-.severity-P4 { @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300; }
+.card-brutal-flat {
+  border: 2px solid #18181B;
+  border-radius: 12px;
+}
 
-/* Status badges */
-.status-badge {
-  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+/* Neo-Brutalist Buttons */
+.btn-brutal-yellow {
+  background-color: #FDE047;
+  border: 2px solid #18181B;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0px 0px #18181B;
+  font-weight: 700;
+  color: #18181B;
+  transition: all 0.15s ease;
+}
+
+.btn-brutal-yellow:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #18181B;
+}
+
+.btn-brutal-green {
+  background-color: #86EFAC;
+  border: 2px solid #18181B;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0px 0px #18181B;
+  font-weight: 700;
+  color: #18181B;
+  transition: all 0.15s ease;
+}
+
+.btn-brutal-green:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #18181B;
+}
+
+.btn-brutal-pink {
+  background-color: #F472B6;
+  border: 2px solid #18181B;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0px 0px #18181B;
+  font-weight: 700;
+  color: #18181B;
+  transition: all 0.15s ease;
+}
+
+.btn-brutal-pink:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #18181B;
+}
+
+.btn-brutal-black {
+  background-color: #18181B;
+  border: 2px solid #18181B;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0px 0px #18181B;
+  font-weight: 700;
+  color: #FFFFFF;
+  transition: all 0.15s ease;
+}
+
+.btn-brutal-black:hover {
+  background-color: #27272A;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #18181B;
+}
+
+.btn-brutal-outline {
+  background-color: #FFFFFF;
+  border: 2px solid #18181B;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0px 0px #18181B;
+  font-weight: 700;
+  color: #18181B;
+  transition: all 0.15s ease;
+}
+
+.btn-brutal-outline:hover {
+  background-color: #F4F4F5;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #18181B;
+}
+
+/* Sticker Badges */
+.badge-sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1.5px solid #18181B;
+  border-radius: 6px;
+  box-shadow: 1.5px 1.5px 0px 0px #18181B;
+}
+
+/* Input Fields */
+.input-brutal {
+  border: 2px solid #18181B;
+  border-radius: 8px;
+  box-shadow: 3px 3px 0px 0px #18181B;
+  background-color: #FFFFFF;
+  font-family: var(--font-sans);
+  color: #111111;
+  outline: none;
+  transition: box-shadow 0.15s ease;
+}
+
+.input-brutal:focus {
+  box-shadow: 4px 4px 0px 0px #18181B;
+}
+
+/* Corner pins / rivets matching Reference Images */
+.pin-circle-yellow {
+  width: 14px;
+  height: 14px;
+  background-color: #FDE047;
+  border: 2px solid #18181B;
+  border-radius: 9999px;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 10;
+}
+
+.pin-diamond-pink {
+  width: 13px;
+  height: 13px;
+  background-color: #F472B6;
+  border: 2px solid #18181B;
+  transform: rotate(45deg);
+  position: absolute;
+  bottom: -7px;
+  left: -7px;
+  z-index: 10;
+}
+
+/* Equalizer bounce animation */
+@keyframes barPulse {
+  0%, 100% {
+    transform: scaleY(0.65);
+  }
+  50% {
+    transform: scaleY(1.0);
+  }
+}
+
+.animate-cassette-bar {
+  transform-origin: bottom;
+  animation: barPulse 2.2s ease-in-out infinite;
 }

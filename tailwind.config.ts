@@ -8,29 +8,32 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
+      },
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        border: "var(--border)",
-        card: "var(--card)",
-        "card-foreground": "var(--card-foreground)",
-        primary: {
-          DEFAULT: "#0284c7",
-          foreground: "#ffffff",
-          dark: "#0369a1",
+        background: "#FAF9F5",
+        foreground: "#111111",
+        brutal: {
+          black: "#18181B",
+          dark: "#0F172A",
+          green: "#86EFAC",
+          "green-pastel": "#DCFCE7",
+          yellow: "#FDE047",
+          "yellow-pastel": "#FEF9C3",
+          pink: "#F472B6",
+          "pink-pastel": "#FCE7F3",
+          coral: "#FDA4AF",
+          cyan: "#7DD3FC",
+          "cyan-pastel": "#E0F2FE",
         },
-        destructive: {
-          DEFAULT: "#ef4444",
-          foreground: "#ffffff",
-        },
-        warning: {
-          DEFAULT: "#f59e0b",
-          foreground: "#ffffff",
-        },
-        success: {
-          DEFAULT: "#10b981",
-          foreground: "#ffffff",
-        },
+      },
+      boxShadow: {
+        brutal: "4px 4px 0px 0px #18181B",
+        "brutal-lg": "6px 6px 0px 0px #18181B",
+        "brutal-xl": "8px 8px 0px 0px #18181B",
+        "brutal-sm": "2px 2px 0px 0px #18181B",
       },
     },
   },
