@@ -7,7 +7,7 @@ import { checkPlanApproval } from '@/lib/governance/sod';
 import { mapPlan, mapIncident } from '@/lib/repo/mappers';
 import type { PlanRow, IncidentRow } from '@/lib/repo/rows';
 import type { RecoveryPlan } from '@/lib/domain/types';
-import { sendInApp } from '@/lib/notifications/dispatcher';
+import { sendInApp, sendWhatsApp, sendEmail } from '@/lib/notifications/dispatcher';
 import { publishToRedisBox } from '@/lib/redis/redisClient';
 
 /**
@@ -224,6 +224,20 @@ export async function POST(
           incidentId: plan.incidentId,
           department: 'Electrical & Electronics',
           status: 'CONTAINED',
+        });
+
+        // 4. Dispatch Email and WhatsApp to user & student
+        await sendWhatsApp(admin, {
+          to: '+919840122045',
+          body: '⚡ [AEGIS EMERGENCY DISPATCH] Disruption in Hall B-204 approved by Super Admin. EE301 Midterm relocated to Library Hall A. Lead Tech Rajesh Kumar en route with replacement breaker.',
+          incidentId: plan.incidentId,
+        });
+
+        await sendEmail(admin, {
+          to: 'srigowv@gmail.com',
+          subject: '[AEGIS-CAMPUS] Recovery Authorization: Hall B-204 Relocated to Library Hall A',
+          html: '<div style="font-family:sans-serif;padding:20px;border:2px solid #18181B;border-radius:8px;"><h2>Aegis Verified Campus Recovery — Executive Authorization</h2><p><strong>Incident:</strong> Main circuit breaker tripped in Exam Hall B-204</p><p><strong>Continuity Action:</strong> Relocated 180 EE301 Midterm students to Library Hall A.</p><p><strong>Field Specialist:</strong> Rajesh Kumar dispatched with MCB-63A-3P.</p></div>',
+          incidentId: plan.incidentId,
         });
       }
     } catch (redisErr) {

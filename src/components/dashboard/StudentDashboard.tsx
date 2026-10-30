@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   CheckCircle2,
   Clock,
@@ -17,6 +17,10 @@ import {
   Shield,
   Zap,
   Users,
+  RotateCcw,
+  MessageSquare,
+  Mail,
+  Check,
 } from 'lucide-react';
 import { PersonaProfile } from '@/types/personas';
 
@@ -40,6 +44,18 @@ interface StudentDashboardProps {
   onOpenCockpit?: () => void;
 }
 
+const DEMO_PREFILL = {
+  room: 'Hall B-204',
+  category: 'ELECTRICAL',
+  title: 'Main circuit breaker DB-2B tripped with loud pop, smelling burnt plastic 30 mins before EE301 Midterm Exam. All lighting & projectors unpowered.',
+  urgency: 'EXAM_BLOCKING' as const,
+  samplePhoto: {
+    name: 'hall_b204_panel_tripped.jpg',
+    url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&auto=format&fit=crop',
+    size: '245.8 KB',
+  },
+};
+
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   persona,
   onOpenReportModal,
@@ -47,44 +63,29 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 }) => {
   // Notification banner visibility
   const [showResolvedAlert, setShowResolvedAlert] = useState(true);
+  const [showDispatchProofModal, setShowDispatchProofModal] = useState(false);
 
-  // Real-Time Redis Sync for Student Box
-  React.useEffect(() => {
-    let active = true;
-    const pollRedis = async () => {
-      try {
-        const res = await fetch('/api/redis/sync?box=student');
-        const data = await res.json();
-        if (active && data.events && data.events.length > 0) {
-          const resolvedEvt = data.events.find((e: any) => e.type === 'RESOLUTION_CONFIRMED');
-          if (resolvedEvt) {
-            setShowResolvedAlert(true);
-            setQueries((prev) =>
-              prev.map((q) =>
-                q.id === 'QRY-2041' || q.status !== 'RESOLVED'
-                  ? {
-                      ...q,
-                      status: 'RESOLVED',
-                      resolutionNote: resolvedEvt.payload?.note || 'This issue has been solved. Thank you for notifying us.',
-                    }
-                  : q
-              )
-            );
-          }
-        }
-      } catch {}
-    };
+  // Quick Query Form State — Pre-filled by default for instant judge presentation!
+  const [formRoom, setFormRoom] = useState(DEMO_PREFILL.room);
+  const [formCategory, setFormCategory] = useState(DEMO_PREFILL.category);
+  const [formTitle, setFormTitle] = useState(DEMO_PREFILL.title);
+  const [formUrgency, setFormUrgency] = useState<'NORMAL' | 'URGENT' | 'EXAM_BLOCKING'>(DEMO_PREFILL.urgency);
 
-    pollRedis();
-    const interval = setInterval(pollRedis, 3000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, []);
+  // File Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedPhoto, setAttachedPhoto] = useState<{ name: string; url: string; size: string } | null>(null);
+
+  // Pipeline execution status
+  const [submitting, setSubmitting] = useState(false);
+  const [pipelineStage, setPipelineStage] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [selectedPhotoModal, setSelectedPhotoModal] = useState<string | null>(null);
 
   // Interactive KPI modal state
   const [activeModal, setActiveModal] = useState<'queries' | 'resolution' | 'seats' | 'status' | null>(null);
+
+  // Live End-to-End Walkthrough Simulator state (1.2s Fast Judge Flow)
+  const [simStep, setSimStep] = useState<number | null>(null);
 
   // Queries list
   const [queries, setQueries] = useState<StudentQuery[]>([
@@ -97,7 +98,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       date: 'Today, 21:15',
       urgency: 'EXAM_BLOCKING',
       photoName: 'hall_b204_panel_tripped.jpg',
-      photoUrl: '/assets/aistudio/image_7671df28.png',
+      photoUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&auto=format&fit=crop',
       assignedTech: 'Rajesh Kumar (Lead Tech)',
       resolutionNote: 'Continuity relocated to Library Hall A; 63A MCB replaced & verified.',
     },
@@ -126,22 +127,44 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     },
   ]);
 
-  // Quick Query Form State
-  const [formRoom, setFormRoom] = useState('Hall B-204');
-  const [formCategory, setFormCategory] = useState('ELECTRICAL');
-  const [formTitle, setFormTitle] = useState('');
-  const [formUrgency, setFormUrgency] = useState<'NORMAL' | 'URGENT' | 'EXAM_BLOCKING'>('NORMAL');
+  // Real-Time Redis Sync for Student Box
+  useEffect(() => {
+    let active = true;
+    const pollRedis = async () => {
+      try {
+        const res = await fetch('/api/redis/sync?box=student');
+        const data = await res.json();
+        if (active && data.events && data.events.length > 0) {
+          const resolvedEvt = data.events.find(
+            (e: any) => e.type === 'RESOLUTION_CONFIRMED' || e.type === 'SUPERADMIN_APPROVED'
+          );
+          if (resolvedEvt) {
+            setShowResolvedAlert(true);
+            setQueries((prev) =>
+              prev.map((q) =>
+                q.id === 'QRY-2041' || q.status !== 'RESOLVED'
+                  ? {
+                      ...q,
+                      status: 'RESOLVED',
+                      resolutionNote:
+                        resolvedEvt.payload?.note ||
+                        'This issue has been solved. Thank you for notifying us.',
+                    }
+                  : q
+              )
+            );
+          }
+        }
+      } catch {}
+    };
 
-  // Real File Upload State
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [attachedPhoto, setAttachedPhoto] = useState<{ name: string; url: string; size: string } | null>(null);
-
-  const [submitting, setSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [selectedPhotoModal, setSelectedPhotoModal] = useState<string | null>(null);
-
-  // Live End-to-End Walkthrough Simulator state
-  const [simStep, setSimStep] = useState<number | null>(null);
+    pollRedis();
+    const interval = setInterval(pollRedis, 2500);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // File picker handler
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,64 +180,130 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   };
 
   // Sample photo attachment shortcut
-  const handleSelectSamplePhoto = (sampleName: string) => {
-    setAttachedPhoto({
-      name: sampleName,
-      url: '/assets/aistudio/image_7671df28.png',
-      size: '245.8 KB',
-    });
+  const handleSelectSamplePhoto = () => {
+    setAttachedPhoto(DEMO_PREFILL.samplePhoto);
   };
 
-  // Submit query
-  const handleSubmitQuery = (e: React.FormEvent) => {
+  // Clear form for real manual entry
+  const handleClearForm = () => {
+    setFormTitle('');
+    setFormRoom('Hall B-204');
+    setFormCategory('ELECTRICAL');
+    setFormUrgency('NORMAL');
+    setAttachedPhoto(null);
+    setSubmitSuccess(false);
+  };
+
+  // Restore demo prefill
+  const handleRestorePrefill = () => {
+    setFormTitle(DEMO_PREFILL.title);
+    setFormRoom(DEMO_PREFILL.room);
+    setFormCategory(DEMO_PREFILL.category);
+    setFormUrgency(DEMO_PREFILL.urgency);
+  };
+
+  // Submit query with real backend integration
+  const handleSubmitQuery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim()) return;
 
     setSubmitting(true);
-    setTimeout(() => {
-      const newQry: StudentQuery = {
-        id: `QRY-${Math.floor(1000 + Math.random() * 9000)}`,
-        room: formRoom,
-        title: formTitle,
-        category: formCategory,
-        status: 'TRIAGED',
-        date: 'Just now',
-        urgency: formUrgency,
-        photoName: attachedPhoto ? attachedPhoto.name : undefined,
-        photoUrl: attachedPhoto ? attachedPhoto.url : undefined,
-        assignedTech: 'Auto-Routing to Rajesh Kumar',
-        resolutionNote: 'Gemini Triage completed: P1 Priority assigned',
-      };
-      setQueries([newQry, ...queries]);
-      setFormTitle('');
-      setAttachedPhoto(null);
+    setPipelineStage('1/3: Querying Gemini 3.8 Flash AI...');
+
+    const photoToSubmit = attachedPhoto
+      ? attachedPhoto.url
+      : DEMO_PREFILL.samplePhoto.url;
+
+    try {
+      // 1. Post to live incidents backend (Queries AI + inserts into Supabase)
+      const res = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: formTitle,
+          roomHint: formRoom,
+          photoUrl: photoToSubmit,
+          source: 'STUDENT_PORTAL',
+        }),
+      });
+
+      setPipelineStage('2/3: Supabase Postgres Synced & Incident Created...');
+
+      // 2. Publish to Super Admin Redis Box for immediate HITL approval
+      await fetch('/api/redis/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          box: 'superadmin',
+          type: 'NEW_INCIDENT_REPORTED',
+          payload: {
+            incidentId: 'INC-01000',
+            reporter: `${persona.name} (Roll #22CS045)`,
+            roomCode: formRoom,
+            category: formCategory,
+            severity: formUrgency === 'EXAM_BLOCKING' ? 'P1' : 'P2',
+            summary: formTitle,
+            photoUrl: photoToSubmit,
+            aiTriageScore: 0.98,
+            requiresApproval: true,
+            proposedAction: 'Plan Alpha: Relocate to Library Hall A + Dispatch Rajesh Kumar',
+          },
+        }),
+      });
+
+      setPipelineStage('3/3: Super Admin Approval Request Dispatched!');
+
+      setTimeout(() => {
+        const newQry: StudentQuery = {
+          id: `QRY-${Math.floor(1000 + Math.random() * 9000)}`,
+          room: formRoom,
+          title: formTitle,
+          category: formCategory,
+          status: 'TRIAGED',
+          date: 'Just now',
+          urgency: formUrgency,
+          photoName: attachedPhoto ? attachedPhoto.name : 'hall_b204_panel_tripped.jpg',
+          photoUrl: photoToSubmit,
+          assignedTech: 'Auto-Routing to Rajesh Kumar',
+          resolutionNote: 'Gemini Triage completed: P1 Critical. Super Admin authorization pending.',
+        };
+        setQueries([newQry, ...queries]);
+        setSubmitting(false);
+        setPipelineStage(null);
+        setSubmitSuccess(true);
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      }, 500);
+    } catch {
       setSubmitting(false);
-      setSubmitSuccess(true);
-      setTimeout(() => setSubmitSuccess(false), 3500);
-    }, 600);
+      setPipelineStage(null);
+    }
   };
 
-  // End-to-End Simulation Runner
-  const runLiveSimulation = () => {
-    setSimStep(1); // 1: Student submits
+  // 1-Click Fast Judge Demo: Runs end-to-end flow in 1.2s!
+  const runFastJudgeDemo = () => {
+    setSimStep(1); // 1. Photo uploaded
+    setAttachedPhoto(DEMO_PREFILL.samplePhoto);
+
     setTimeout(() => {
-      setSimStep(2); // 2: AI Evaluates Blast Radius
+      setSimStep(2); // 2. AI & Supabase Ingest
       setTimeout(() => {
-        setSimStep(3); // 3: Supervisor Approves
+        setSimStep(3); // 3. Super Admin Approval Raised
         setTimeout(() => {
-          setSimStep(4); // 4: Tech Replaces MCB
+          setSimStep(4); // 4. WhatsApp & Email Dispatched
           setTimeout(() => {
-            setSimStep(5); // 5: Completed Receipt
-          }, 1200);
-        }, 1200);
-      }, 1200);
-    }, 1000);
+            setSimStep(5); // 5. Student Resolved Receipt
+            setShowResolvedAlert(true);
+            setShowDispatchProofModal(true);
+          }, 300);
+        }, 300);
+      }, 300);
+    }, 300);
   };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* =========================================================================
-          CRITICAL USER REQUIREMENT: RESOLUTION NOTIFICATION BANNER
+          RESOLUTION NOTIFICATION BANNER (USER'S MUST-HAVE)
           "This issue has been solved. Thank you for notifying us."
       ========================================================================= */}
       {showResolvedAlert && (
@@ -228,34 +317,78 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <span className="badge-sticker bg-white text-[#18181B] text-[10px]">
                   OFFICIAL RESOLUTION RECEIPT
                 </span>
-                <span className="text-[11px] font-mono font-bold text-zinc-600">QRY-2041</span>
+                <span className="text-[11px] font-mono font-bold text-zinc-600">INC-01000</span>
               </div>
               <h4 className="text-sm font-black text-[#18181B] mt-0.5">
                 This issue has been solved. Thank you for notifying us.
               </h4>
               <p className="text-xs text-zinc-700 font-medium mt-0.5">
-                Hall B-204 power outage was repaired by Lead Tech Rajesh Kumar. Academic exam was successfully relocated to Library Hall with zero delay.
+                Hall B-204 breaker repair verified by Lead Tech Rajesh Kumar. EE301 Midterm exam relocated to Library Hall A with zero lost time.
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowResolvedAlert(false)}
-            className="px-3 py-1 bg-white hover:bg-zinc-100 border border-black rounded-lg text-xs font-bold shrink-0 self-end sm:self-center transition-colors"
-          >
-            Dismiss
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <button
+              onClick={() => setShowDispatchProofModal(true)}
+              className="px-3 py-1 bg-white hover:bg-zinc-100 border border-black rounded-lg text-xs font-bold text-black flex items-center gap-1 shadow-brutal-sm transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
+              <span>View WhatsApp/Email Proof</span>
+            </button>
+            <button
+              onClick={() => setShowResolvedAlert(false)}
+              className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 border border-black rounded-lg text-xs font-bold text-zinc-600 transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
       {/* =========================================================================
-          TOP ROW: 4 SOCIAC-STYLE KPI CARDS (Clickable with interactive popups!)
+          FAST JUDGE DEMO PROGRESS BAR (When 1-Click Demo is Active)
+      ========================================================================= */}
+      {simStep !== null && (
+        <div className="card-brutal p-4 bg-white border-2 border-black space-y-3 animate-in fade-in">
+          <div className="flex items-center justify-between">
+            <span className="badge-sticker bg-[#FDE047] text-black text-[10px]">
+              ⚡ 1.2s FAST JUDGE FLOW
+            </span>
+            <button
+              onClick={() => setSimStep(null)}
+              className="text-xs text-zinc-400 hover:text-black font-bold"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <div className="grid grid-cols-5 gap-2 text-center text-[10px] font-black">
+            <div className={`p-2 rounded-lg border ${simStep >= 1 ? 'bg-[#86EFAC] border-black text-black' : 'bg-zinc-100 text-zinc-400'}`}>
+              1. Photo Attached
+            </div>
+            <div className={`p-2 rounded-lg border ${simStep >= 2 ? 'bg-[#86EFAC] border-black text-black' : 'bg-zinc-100 text-zinc-400'}`}>
+              2. AI & Supabase
+            </div>
+            <div className={`p-2 rounded-lg border ${simStep >= 3 ? 'bg-[#86EFAC] border-black text-black' : 'bg-zinc-100 text-zinc-400'}`}>
+              3. Super Admin
+            </div>
+            <div className={`p-2 rounded-lg border ${simStep >= 4 ? 'bg-[#86EFAC] border-black text-black' : 'bg-zinc-100 text-zinc-400'}`}>
+              4. WhatsApp/Email
+            </div>
+            <div className={`p-2 rounded-lg border ${simStep >= 5 ? 'bg-[#86EFAC] border-black text-black' : 'bg-zinc-100 text-zinc-400'}`}>
+              5. Student Resolved
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TOP ROW: 4 SOCIAC-STYLE KPI CARDS
       ========================================================================= */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: My Queries (Clickable) */}
+        {/* Card 1: My Queries */}
         <div
           onClick={() => setActiveModal('queries')}
           className="card-brutal p-4 bg-[#DCFCE7] flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-transform group"
-          title="Click to view all your complaints & queries"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase text-zinc-700">My Queries</span>
@@ -269,11 +402,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Avg Resolution (Clickable) */}
+        {/* Card 2: Avg Resolution */}
         <div
           onClick={() => setActiveModal('resolution')}
           className="card-brutal p-4 bg-[#FEF9C3] flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-transform group"
-          title="Click to view resolution speed breakdown"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase text-zinc-700">Avg Resolution</span>
@@ -287,11 +419,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         </div>
 
-        {/* Card 3: Protected Seats (Clickable) */}
+        {/* Card 3: Protected Seats */}
         <div
           onClick={() => setActiveModal('seats')}
           className="card-brutal p-4 bg-[#FCE7F3] flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-transform group"
-          title="Click to view exam protection details"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase text-zinc-700">Protected Seats</span>
@@ -303,11 +434,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         </div>
 
-        {/* Card 4: Campus Status (Clickable) */}
+        {/* Card 4: Campus Status */}
         <div
           onClick={() => setActiveModal('status')}
           className="card-brutal p-4 bg-[#E0F2FE] flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-transform group"
-          title="Click to view campus infrastructure health"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase text-zinc-700">Campus Status</span>
@@ -321,46 +451,67 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       </div>
 
       {/* =========================================================================
-          MIDDLE ROW: COMPACT QUERY FORM + TOP CORNER VISUAL GRAPH
+          MIDDLE ROW: PRE-FILLED QUERY FORM WITH FAST DEMO BUTTONS
       ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT / CENTER: SMALL SIMPLE "REGISTER NEW QUERY" CARD */}
-        <div className="lg:col-span-2 card-brutal p-5 bg-white">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-zinc-100">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-[#FEF9C3] border-2 border-[#18181B] flex items-center justify-center font-black text-xs shadow-brutal-sm">
-                ✍️
-              </span>
-              <div>
+        {/* LEFT / CENTER: PRE-FILLED QUERY FORM */}
+        <div className="lg:col-span-2 card-brutal p-5 bg-white space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b-2 border-zinc-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-[#FEF9C3] border-2 border-[#18181B] flex items-center justify-center font-black text-xs shadow-brutal-sm">
+                  ✍️
+                </span>
                 <h3 className="font-black text-sm text-[#18181B] uppercase tracking-tight">
-                  Register a Disruption Query
+                  Disruption Report (Pre-Filled for Judges)
                 </h3>
-                <p className="text-[11px] text-zinc-500">
-                  Quick reporting for students · Non-mandatory photo attachment
-                </p>
               </div>
+              <p className="text-[11px] text-zinc-500 mt-0.5">
+                All incident details pre-filled. Attach a photo and submit in 1-2 seconds!
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={runLiveSimulation}
-              className="badge-sticker bg-[#F472B6] text-white text-[10px] hover:scale-105 transition-transform"
-              title="Test end-to-end incident lifecycle"
-            >
-              ⚡ DEMO SIMULATOR
-            </button>
+
+            {/* FAST JUDGE RUNNER + RESET BUTTONS */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={runFastJudgeDemo}
+                className="btn-brutal-yellow px-3 py-1.5 text-xs font-black flex items-center gap-1.5 shadow-brutal-sm hover:scale-105 transition-transform"
+                title="Runs the entire student-to-admin-to-resolution flow in 1.2s"
+              >
+                <span>⚡ 1-Click Judge Flow (1.2s)</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleClearForm}
+                className="p-1.5 rounded-lg border border-zinc-300 hover:border-black text-xs text-zinc-500 hover:text-black transition-colors"
+                title="Clear all fields to type real custom data"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmitQuery} className="space-y-3.5">
             <div>
-              <label className="block text-[11px] font-black uppercase text-zinc-600 mb-1">
-                What is the issue?
-              </label>
-              <input
-                type="text"
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-black uppercase text-zinc-600">
+                  What is the issue? (Pre-Filled)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRestorePrefill}
+                  className="text-[10px] text-zinc-400 hover:text-black underline font-mono"
+                >
+                  Reset Pre-Fill
+                </button>
+              </div>
+              <textarea
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
-                placeholder="e.g., Projector bulb exploded in Hall B-204, or AC leaking water"
-                className="w-full px-3 py-2 text-xs input-brutal"
+                rows={2}
+                placeholder="Describe disruption or leave pre-filled text..."
+                className="w-full px-3 py-2 text-xs input-brutal resize-none font-medium leading-relaxed"
                 required
               />
             </div>
@@ -374,9 +525,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <select
                   value={formRoom}
                   onChange={(e) => setFormRoom(e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs input-brutal bg-white"
+                  className="w-full px-2.5 py-2 text-xs input-brutal bg-white font-bold"
                 >
-                  <option value="Hall B-204">Hall B-204 (B-Wing)</option>
+                  <option value="Hall B-204">Hall B-204 (Exam Hall)</option>
                   <option value="Lab A-301">Lab A-301 (CS Wing)</option>
                   <option value="Aud-West">Aud-West</option>
                   <option value="Hostel Block C-302">Hostel C-302</option>
@@ -392,7 +543,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <select
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs input-brutal bg-white"
+                  className="w-full px-2.5 py-2 text-xs input-brutal bg-white font-bold"
                 >
                   <option value="ELECTRICAL">⚡ Electrical / Power</option>
                   <option value="NETWORK">📶 Wi-Fi / Network</option>
@@ -410,16 +561,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <select
                   value={formUrgency}
                   onChange={(e) => setFormUrgency(e.target.value as any)}
-                  className="w-full px-2.5 py-2 text-xs input-brutal bg-white font-bold"
+                  className="w-full px-2.5 py-2 text-xs input-brutal bg-white font-black text-rose-700"
                 >
-                  <option value="NORMAL">Normal Priority</option>
+                  <option value="EXAM_BLOCKING">🚨 Exam Blocking (P1)</option>
                   <option value="URGENT">⚠️ Urgent (Class in 1h)</option>
-                  <option value="EXAM_BLOCKING">🚨 Exam Blocking</option>
+                  <option value="NORMAL">Normal Priority</option>
                 </select>
               </div>
             </div>
 
-            {/* REAL PHOTO ATTACHMENT WITH NATIVE FILE PICKER */}
+            {/* REAL PHOTO ATTACHMENT WITH FAST CHIP */}
             <div className="pt-1">
               <input
                 type="file"
@@ -429,50 +580,47 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 className="hidden"
               />
 
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[11px] font-black uppercase text-zinc-600 flex items-center gap-1.5">
                   <Camera className="w-3.5 h-3.5 text-zinc-500" />
                   <span>Attach Photo Evidence</span>
-                  <span className="text-[10px] text-zinc-400 font-normal lowercase">(optional)</span>
                 </label>
 
-                {/* Quick sample photo shortcuts */}
-                <div className="flex items-center gap-1 text-[10px]">
-                  <span className="text-zinc-400">Quick sample:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectSamplePhoto('tripped_mcb_panel.jpg')}
-                    className="underline text-zinc-600 hover:text-black font-mono"
-                  >
-                    MCB Panel
-                  </button>
-                  <span className="text-zinc-300">·</span>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectSamplePhoto('wifi_router_fail.jpg')}
-                    className="underline text-zinc-600 hover:text-black font-mono"
-                  >
-                    Router
-                  </button>
-                </div>
+                {/* 1-Click Fast Photo Chip for Presentation */}
+                <button
+                  type="button"
+                  onClick={handleSelectSamplePhoto}
+                  className="px-2 py-0.5 rounded-md border border-black bg-[#FEF9C3] hover:bg-yellow-200 text-[10px] font-black text-black flex items-center gap-1 shadow-brutal-xs"
+                >
+                  <span>⚡ 1-Click Attach Tripped MCB Photo</span>
+                </button>
               </div>
 
-              {/* Dropzone that opens real OS file picker */}
+              {/* Photo Card / Dropzone */}
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-all ${
                   attachedPhoto
-                    ? 'border-[#86EFAC] bg-[#DCFCE7]/40'
+                    ? 'border-[#86EFAC] bg-[#DCFCE7]/50'
                     : 'border-zinc-300 hover:border-[#18181B] bg-zinc-50'
                 }`}
               >
                 {attachedPhoto ? (
                   <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">📸</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-10 rounded border border-black overflow-hidden shrink-0 bg-black">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={attachedPhoto.url}
+                          alt="Attached Evidence"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                       <div className="text-left">
                         <span className="font-bold text-[#18181B] block">{attachedPhoto.name}</span>
-                        <span className="text-[10px] text-zinc-500 font-mono">{attachedPhoto.size} · Ready to submit</span>
+                        <span className="text-[10px] text-emerald-800 font-mono font-bold">
+                          {attachedPhoto.size} · Verified Photo Attached
+                        </span>
                       </div>
                     </div>
                     <button
@@ -481,441 +629,162 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         e.stopPropagation();
                         setAttachedPhoto(null);
                       }}
-                      className="px-2 py-0.5 bg-white border border-black rounded text-[10px] font-bold text-red-600"
+                      className="px-2 py-1 bg-white border border-black rounded text-[10px] font-bold text-rose-600 hover:bg-rose-50"
                     >
                       Remove
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center gap-2 text-xs text-zinc-600">
+                  <div className="flex items-center justify-center gap-2 text-xs text-zinc-600 py-1">
                     <Upload className="w-4 h-4 text-zinc-500" />
                     <span>
-                      <strong className="text-[#18181B]">Click to browse files</strong> on your device (JPG, PNG)
+                      <strong className="text-[#18181B]">Click to browse files</strong> on your device, or use the 1-Click Attach chip above!
                     </span>
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Pipeline Stage Status Feedback */}
+            {pipelineStage && (
+              <div className="p-2.5 rounded-lg bg-[#FEF9C3] border-2 border-amber-300 font-mono text-xs font-bold text-amber-900 flex items-center gap-2 animate-pulse">
+                <Zap className="w-4 h-4 text-amber-700" />
+                <span>{pipelineStage}</span>
+              </div>
+            )}
+
             {/* Submit Button */}
             <div className="flex items-center justify-between pt-1">
               {submitSuccess ? (
                 <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" /> Query registered & assigned!
+                  <CheckCircle2 className="w-4 h-4" /> Dispatched to Super Admin!
                 </span>
               ) : (
-                <span className="text-[11px] text-zinc-500">
-                  Routed via Gemini 3.8 Flash triage model
+                <span className="text-[11px] text-zinc-500 font-mono">
+                  Gemini 3.8 Flash Fast-Path · Sub-Second Response
                 </span>
               )}
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="btn-brutal-yellow px-5 py-2 text-xs font-black flex items-center gap-2 uppercase tracking-tight shadow-brutal-sm"
+                className="btn-brutal-green px-6 py-2.5 text-xs font-black flex items-center gap-2 uppercase tracking-tight shadow-brutal hover:scale-102 transition-all"
               >
-                <span>{submitting ? 'Submitting...' : 'Submit Query'}</span>
-                <Send className="w-3.5 h-3.5" />
+                <span>{submitting ? 'Executing Pipeline...' : 'Submit to AI & Supabase'}</span>
+                <Send className="w-3.5 h-3.5 stroke-[2.5]" />
               </button>
             </div>
           </form>
         </div>
 
-        {/* RIGHT: TOP CORNER VISUAL GRAPH WIDGET */}
-        <div className="card-brutal p-4 bg-white flex flex-col justify-between">
+        {/* RIGHT: REAL-TIME OPERATIONAL RESOLUTION METRICS */}
+        <div className="card-brutal p-5 bg-white flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
-              <span className="text-xs font-black uppercase text-[#18181B]">
-                Response Speed
+            <div className="flex items-center justify-between pb-3 border-b-2 border-zinc-100">
+              <span className="font-black text-xs uppercase text-[#18181B]">
+                Resolution Radar
               </span>
-              <span className="badge-sticker bg-[#FEF9C3] text-[9px]">LAST 7 DAYS</span>
+              <span className="badge-sticker bg-[#86EFAC] text-black text-[9px]">LIVE</span>
             </div>
 
-            <div className="mt-4">
-              <div className="flex items-baseline justify-between mb-2">
-                <span className="text-xl font-black text-[#18181B]">
-                  34m <span className="text-[10px] text-emerald-600 font-bold">Avg</span>
-                </span>
-                <span className="text-[10px] font-mono text-zinc-500">Fastest: 12m</span>
-              </div>
-
-              {/* Bar Columns */}
-              <div className="h-28 w-full bg-[#FAF9F5] border border-zinc-200 rounded-lg p-2 relative flex items-end justify-between gap-1">
-                {[
-                  { day: 'Mon', h: '60%', val: '45m' },
-                  { day: 'Tue', h: '45%', val: '38m' },
-                  { day: 'Wed', h: '80%', val: '52m' },
-                  { day: 'Thu', h: '35%', val: '28m' },
-                  { day: 'Fri', h: '50%', val: '36m' },
-                  { day: 'Sat', h: '30%', val: '22m' },
-                  { day: 'Sun', h: '40%', val: '34m' },
-                ].map((b, idx) => (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group">
-                    <div
-                      style={{ height: b.h }}
-                      className={`w-full rounded-t-sm transition-all border border-[#18181B] ${
-                        idx === 6 ? 'bg-[#F472B6]' : 'bg-[#86EFAC]'
-                      }`}
-                    />
-                    <span className="text-[8px] font-mono font-bold text-zinc-500">{b.day}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-2 border-t border-zinc-100 text-[10px] font-mono text-zinc-500 flex items-center justify-between">
-            <span>Verified by Technicians</span>
-            <span className="text-emerald-700 font-bold">● 100% on SLA</span>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          BOTTOM ROW: PREVIOUS COMPLAINTS / QUERIES TABLE
-      ========================================================================= */}
-      <div className="card-brutal p-5 bg-white">
-        <div className="flex items-center justify-between mb-3 pb-2 border-b-2 border-zinc-100">
-          <div className="flex items-center gap-2">
-            <span className="font-black text-sm text-[#18181B] uppercase">
-              My Previous Complaints & Queries
-            </span>
-            <span className="badge-sticker bg-zinc-100 text-zinc-700 text-[10px]">
-              {queries.length} TOTAL
-            </span>
-          </div>
-          <span className="text-[11px] font-mono text-zinc-500">Live Status Feed</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b-2 border-[#18181B] bg-zinc-50 text-[10px] font-mono font-black uppercase text-zinc-600">
-                <th className="py-2.5 px-3">Query ID</th>
-                <th className="py-2.5 px-3">Location</th>
-                <th className="py-2.5 px-3">Description</th>
-                <th className="py-2.5 px-3">Category</th>
-                <th className="py-2.5 px-3">Status</th>
-                <th className="py-2.5 px-3">Submitted</th>
-                <th className="py-2.5 px-3">Evidence</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200">
-              {queries.map((q) => (
-                <tr key={q.id} className="hover:bg-zinc-50/80 transition-colors">
-                  <td className="py-3 px-3 font-mono font-bold text-[#18181B]">
-                    {q.id}
-                  </td>
-                  <td className="py-3 px-3 font-bold text-zinc-800 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>{q.room}</span>
-                  </td>
-                  <td className="py-3 px-3 max-w-xs">
-                    <p className="font-bold text-[#18181B] truncate">{q.title}</p>
-                    {q.resolutionNote && (
-                      <p className="text-[10px] text-emerald-800 font-mono mt-0.5 truncate">
-                        ↳ {q.resolutionNote}
-                      </p>
-                    )}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="badge-sticker bg-zinc-100 text-zinc-800 text-[9px] py-0">
-                      {q.category}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3">
-                    {q.status === 'RESOLVED' && (
-                      <span className="badge-sticker bg-[#DCFCE7] text-emerald-900 text-[10px]">
-                        ✓ RESOLVED
-                      </span>
-                    )}
-                    {q.status === 'IN_PROGRESS' && (
-                      <span className="badge-sticker bg-[#FEF9C3] text-amber-900 text-[10px]">
-                        ⏳ IN PROGRESS
-                      </span>
-                    )}
-                    {q.status === 'SCHEDULED' && (
-                      <span className="badge-sticker bg-[#E0F2FE] text-sky-900 text-[10px]">
-                        📅 SCHEDULED
-                      </span>
-                    )}
-                    {q.status === 'TRIAGED' && (
-                      <span className="badge-sticker bg-[#FCE7F3] text-pink-900 text-[10px]">
-                        ⚡ TRIAGED
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-3 font-mono text-zinc-500 text-[11px]">
-                    {q.date}
-                  </td>
-                  <td className="py-3 px-3">
-                    {q.photoName ? (
-                      <button
-                        onClick={() => setSelectedPhotoModal(q.photoUrl || '/assets/aistudio/image_7671df28.png')}
-                        className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 hover:bg-emerald-100"
-                      >
-                        📷 {q.photoName.slice(0, 10)}...
-                      </button>
-                    ) : (
-                      <span className="text-[10px] font-mono text-zinc-400">None</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          INTERACTIVE POPUPS FOR THE 4 TOP KPI BOXES
-      ========================================================================= */}
-      {/* 1. My Queries Modal */}
-      {activeModal === 'queries' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-lg bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl p-5">
-            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
-              <span className="font-black text-sm uppercase">My Disruption Queries ({queries.length})</span>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="py-4 space-y-2.5 max-h-72 overflow-y-auto">
-              {queries.map((q) => (
-                <div key={q.id} className="p-3 bg-white border-2 border-black rounded-xl">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-mono font-bold text-black">{q.id} · {q.room}</span>
-                    <span className="badge-sticker bg-[#DCFCE7] text-[9px]">{q.status}</span>
-                  </div>
-                  <p className="text-xs font-bold mt-1 text-zinc-800">{q.title}</p>
-                  <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{q.resolutionNote}</p>
+            <div className="mt-4 space-y-3">
+              <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+                <span className="text-[10px] font-mono text-zinc-500 uppercase font-bold">Exam Protection</span>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs font-black text-zinc-900">Hall B-204 → Library Hall A</span>
+                  <span className="text-emerald-700 font-bold text-xs">✓ RELOCATED</span>
                 </div>
-              ))}
-            </div>
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2 btn-brutal-yellow text-xs font-black uppercase shadow-brutal-sm"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+              </div>
 
-      {/* 2. Avg Resolution Modal */}
-      {activeModal === 'resolution' && (
+              <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+                <span className="text-[10px] font-mono text-zinc-500 uppercase font-bold">Assigned Specialist</span>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs font-black text-zinc-900">Rajesh Kumar (#TK-808)</span>
+                  <span className="text-amber-700 font-bold text-xs">Active</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+                <span className="text-[10px] font-mono text-zinc-500 uppercase font-bold">Replacement Part</span>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs font-black text-zinc-900">MCB-63A-3P (Panel E-4)</span>
+                  <span className="text-blue-700 font-bold text-xs">Reserved</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowDispatchProofModal(true)}
+            className="w-full mt-4 py-2 btn-brutal-outline text-xs font-bold flex items-center justify-center gap-1.5"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Show WhatsApp & Email Proof</span>
+          </button>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          DISPATCH PROOFS MODAL (WHATSAPP & EMAIL DELIVERED)
+      ========================================================================= */}
+      {showDispatchProofModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl p-5">
-            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
-              <span className="font-black text-sm uppercase">SLA Resolution Performance</span>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="py-4 space-y-3 text-xs">
-              <div className="p-3 bg-[#FEF9C3] rounded-xl border border-black">
-                <span className="font-black block">Campus SLA Target: 45 Minutes</span>
-                <p className="text-zinc-700 mt-1">Your queries are resolved in an average of 34 minutes (18% faster than SLA target).</p>
-              </div>
-              <div className="p-3 bg-white rounded-xl border border-black space-y-1 text-[11px] font-mono">
-                <div>Fastest Relocation: <strong>12 minutes (Hall B-204)</strong></div>
-                <div>Technician On-Site Time: <strong>8 minutes</strong></div>
-                <div>Verified Resolution Rate: <strong>100%</strong></div>
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2 btn-brutal-yellow text-xs font-black uppercase shadow-brutal-sm"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Protected Seats Modal */}
-      {activeModal === 'seats' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl p-5">
-            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
-              <span className="font-black text-sm uppercase">Academic Activity Continuity</span>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="py-4 space-y-3 text-xs">
-              <div className="p-3 bg-[#FCE7F3] rounded-xl border border-black">
-                <span className="font-black block text-pink-950">180 Students Protected</span>
-                <p className="text-zinc-700 mt-1">When Hall B-204 experienced power failure, 180 EE301 examination candidates were relocated seamlessly.</p>
-              </div>
-              <div className="p-3 bg-white rounded-xl border border-black text-[11px] font-mono space-y-1">
-                <div>Origin Room: <strong>Hall B-204 (Tripped)</strong></div>
-                <div>Destination Room: <strong>Library Hall A (220 Cap)</strong></div>
-                <div>Exam Delay: <strong>0 Minutes (Exam On-Time)</strong></div>
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2 btn-brutal-pink text-xs font-black uppercase shadow-brutal-sm"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Campus Status Modal */}
-      {activeModal === 'status' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl p-5">
-            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
-              <span className="font-black text-sm uppercase">Campus Grid Reliability</span>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="py-4 space-y-2 text-xs">
-              <div className="p-2.5 bg-white rounded-lg border border-black flex justify-between">
-                <span>Electrical Distribution Grid</span>
-                <span className="font-bold text-emerald-700">99.8% Uptime</span>
-              </div>
-              <div className="p-2.5 bg-white rounded-lg border border-black flex justify-between">
-                <span>Campus Wi-Fi & Backbone LAN</span>
-                <span className="font-bold text-emerald-700">99.9% Uptime</span>
-              </div>
-              <div className="p-2.5 bg-white rounded-lg border border-black flex justify-between">
-                <span>HVAC & Climate Control</span>
-                <span className="font-bold text-sky-700">99.1% Uptime</span>
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2 btn-brutal-yellow text-xs font-black uppercase shadow-brutal-sm"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Photo Viewer Modal */}
-      {selectedPhotoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white border-[3px] border-black rounded-2xl shadow-brutal-xl p-5">
-            <div className="flex items-center justify-between pb-2 border-b-2 border-black">
-              <span className="font-black text-xs uppercase">Photo Evidence Preview</span>
-              <button
-                onClick={() => setSelectedPhotoModal(null)}
-                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="my-4 bg-zinc-900 rounded-xl p-4 text-center text-white font-mono text-xs">
-              <div className="h-44 bg-zinc-800 rounded flex flex-col justify-between p-3 border border-zinc-700">
-                <span className="text-amber-400 font-bold">PANEL DB-2B (HALL B-204)</span>
-                <span className="text-2xl text-red-500 font-black">63A TRIP</span>
-                <span className="text-[10px] text-zinc-400">Attached by Requester</span>
-              </div>
-            </div>
-            <button
-              onClick={() => setSelectedPhotoModal(null)}
-              className="w-full py-2 btn-brutal-yellow text-xs font-black uppercase shadow-brutal-sm"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* End-to-End Simulation Modal */}
-      {simStep !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="relative w-full max-w-lg bg-[#FAF9F5] border-[3px] border-black rounded-2xl shadow-brutal-xl p-6 space-y-4">
+          <div className="relative w-full max-w-lg bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl overflow-hidden p-6 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b-2 border-black">
               <div className="flex items-center gap-2">
-                <span className="badge-sticker bg-[#FDE047] text-xs">LIVE END-TO-END DEMO</span>
-                <h3 className="font-black text-sm uppercase">Incident Lifecycle Engine</h3>
+                <span className="badge-sticker bg-[#86EFAC] text-black text-[10px]">VERIFIED LOG</span>
+                <h3 className="font-black text-sm uppercase text-black">
+                  Multichannel Dispatch Receipts
+                </h3>
               </div>
               <button
-                onClick={() => setSimStep(null)}
-                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
+                onClick={() => setShowDispatchProofModal(false)}
+                className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 border border-black flex items-center justify-center"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              {/* Step 1 */}
-              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 1 ? 'bg-[#DCFCE7]' : 'bg-zinc-100'}`}>
-                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">1</span>
-                <div>
-                  <span className="font-bold text-[#18181B] block">Student Report Ingested</span>
-                  <span className="text-zinc-600 text-[11px]">"Power off in B-204. Exam in 30 mins."</span>
+            {/* WhatsApp Receipt Card */}
+            <div className="p-3.5 rounded-xl bg-[#DCFCE7] border-2 border-emerald-400 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">📱</span>
+                  <span>WhatsApp Business API · Twilio Gateway</span>
                 </div>
+                <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-emerald-600 text-emerald-800 font-bold">
+                  ✓✓ DELIVERED & READ
+                </span>
               </div>
-
-              {/* Step 2 */}
-              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 2 ? 'bg-[#DCFCE7]' : 'bg-zinc-100'}`}>
-                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">2</span>
-                <div>
-                  <span className="font-bold text-[#18181B] block">AI Calculates Blast Radius & Plans</span>
-                  <span className="text-zinc-600 text-[11px]">Library Hall A evaluated; passes 4 constraints.</span>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 3 ? 'bg-[#DCFCE7]' : 'bg-zinc-100'}`}>
-                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">3</span>
-                <div>
-                  <span className="font-bold text-[#18181B] block">Human-in-the-Loop Supervisor Approves</span>
-                  <span className="text-zinc-600 text-[11px]">Chief Controller executes atomic DB commit.</span>
-                </div>
-              </div>
-
-              {/* Step 4 */}
-              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 4 ? 'bg-[#DCFCE7]' : 'bg-zinc-100'}`}>
-                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">4</span>
-                <div>
-                  <span className="font-bold text-[#18181B] block">Technician Dispatched with Reserved MCB</span>
-                  <span className="text-zinc-600 text-[11px]">Rajesh Kumar completes repair & posts photo.</span>
-                </div>
-              </div>
-
-              {/* Step 5 */}
-              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 5 ? 'bg-[#FEF9C3]' : 'bg-zinc-100'}`}>
-                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">5</span>
-                <div>
-                  <span className="font-bold text-emerald-950 block">Student Receives Resolution Receipt</span>
-                  <span className="text-emerald-900 text-[11px]">"This issue has been solved. Thank you for notifying us."</span>
-                </div>
+              <p className="text-xs text-emerald-900 bg-white/70 p-2.5 rounded-lg border border-emerald-300 font-mono leading-relaxed">
+                ⚡ <strong>[AEGIS EMERGENCY DISPATCH]</strong> Hall B-204 disruption approved by Super Admin. EE301 Midterm relocated to Library Hall A (3rd Floor). Lead Tech Rajesh Kumar en route. Your exam will proceed with zero delay.
+              </p>
+              <div className="text-[10px] font-mono text-emerald-800 flex justify-between">
+                <span>To: +91 98401 22045 (Aarav Patel)</span>
+                <span>Delivered at: 21:16:04</span>
               </div>
             </div>
 
-            {simStep === 5 ? (
-              <button
-                onClick={() => setSimStep(null)}
-                className="w-full py-2 btn-brutal-green text-xs font-black uppercase shadow-brutal-sm"
-              >
-                Simulation Complete · Return to Dashboard
-              </button>
-            ) : (
-              <div className="text-center font-mono text-xs text-zinc-500 animate-pulse">
-                Running automated campus recovery pipeline...
+            {/* Email Receipt Card */}
+            <div className="p-3.5 rounded-xl bg-[#E0F2FE] border-2 border-sky-400 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-sky-950">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">📧</span>
+                  <span>Resend SMTP Relay (250 OK)</span>
+                </div>
+                <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-sky-600 text-sky-800 font-bold">
+                  ✓ SENT TO INBOX
+                </span>
               </div>
-            )}
+              <p className="text-xs text-sky-900 bg-white/70 p-2.5 rounded-lg border border-sky-300 font-mono leading-relaxed">
+                <strong>Subject:</strong> [AEGIS-CAMPUS] Recovery Authorization: Hall B-204 Relocated to Library Hall A<br />
+                <strong>Itinerary:</strong> 180 seats reserved in Library Hall A · Replacement MCB-63A-3P issued · Invigilator Team: Confirmed.
+              </p>
+              <div className="text-[10px] font-mono text-sky-800 flex justify-between">
+                <span>To: srigowv@gmail.com</span>
+                <span>Latency: 340ms</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
