@@ -211,3 +211,46 @@
   transform-origin: bottom;
   animation: barPulse 2.2s ease-in-out infinite;
 }
+
+/* Micro-animations and tactile button feedback */
+.btn-brutal-yellow:active,
+.btn-brutal-green:active,
+.btn-brutal-pink:active,
+.btn-brutal-outline:active {
+  transform: translate(1.5px, 1.5px) !important;
+  box-shadow: 1px 1px 0px 0px #18181B !important;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Sleek minimalist scrollbar to prevent bulky clutter */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(24, 24, 27, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 24, 27, 0.4);
+}

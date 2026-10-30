@@ -1,0 +1,438 @@
+openapi: 3.1.0
+info:
+  title: Aegis — Verified Campus Recovery Cockpit API
+  version: 1.0.0
+  description: |
+    Formal OpenAPI Contract and Interface Definition between the Aegis React/Next.js
+    Frontend and Backend Governance Engines.
+    
+    This specification documents all REST endpoints, governance policies, and the
+    5-namespace Redis event topology used for real-time, zero-lag cross-role synchronization.
+  contact:
+    name: Aegis Campus Operations Core Team
+    email: srigowv@gmail.com
+
+servers:
+  - url: http://localhost:3000
+    description: Local Next.js Development Server
+  - url: https://omllwyqjafeorvivsttn.supabase.co
+    description: Supabase Production Persistence Engine
+
+x-redis-configuration:
+  defaultUrl: redis://127.0.0.1:6379
+  envVariable: REDIS_URL
+  fallbackMode: In-Memory High-Speed Global Singleton Bus
+  description: |
+    Unified Redis connection used by both Frontend components and Backend API route handlers.
+    When an external Redis URL is provided via process.env.REDIS_URL, ioredis connects automatically.
+    In local dev without an external daemon, an in-memory cross-request pub/sub bus executes with 0ms latency.
+
+x-redis-instances:
+  student:
+    boxId: student
+    keyPrefix: "aegis:box:student"
+    channel: "aegis:channel:student"
+    targetRole: REQUESTER
+    defaultActor: "Aarav Patel (Roll #22CS045)"
+    description: "Receives instant query receipts, live resolution badge updates, and student notifications ('This issue has been solved. Thank you for notifying us.')."
+    allowedEvents:
+      - TICKET_SUBMITTED
+      - RESOLUTION_CONFIRMED
+      - CLASSROOM_RELOCATED
+
+  staff:
+    boxId: staff
+    keyPrefix: "aegis:box:teacher"
+    channel: "aegis:channel:teacher"
+    targetRole: DEPARTMENT_MANAGER
+    defaultActor: "Prof. Ananya Sen / Dr. K. Raman"
+    description: "Receives departmental room health alerts, lab status updates, and exam continuity schedules."
+    allowedEvents:
+      - HALL_AT_RISK
+      - EXAM_SHIELD_ACTIVATED
+      - PROCTOR_REASSIGNED
+
+  technician:
+    boxId: technician
+    keyPrefix: "aegis:box:technician"
+    channel: "aegis:channel:technician"
+    targetRole: TECHNICIAN
+    defaultActor: "Rajesh Kumar (Field Specialist #TK-808)"
+    description: "Receives assigned work orders with student-submitted photo evidence, parts allocation, and dispatch requests."
+    allowedEvents:
+      - WORK_ORDER_DISPATCHED
+      - SPARE_PART_REQUISITION
+      - REPAIR_COMPLETED
+
+  superadmin:
+    boxId: superadmin
+    keyPrefix: "aegis:box:superadmin"
+    channel: "aegis:channel:superadmin"
+    targetRole: FACILITIES_ADMIN
+    defaultActor: "Chief Controller (Clearance #FAC-001)"
+    description: "Receives all incoming student queries, photo previews, and automated AI proposals for immediate YES/NO Human-in-the-Loop decision."
+    allowedEvents:
+      - NEW_INCIDENT_REPORTED
+      - AI_PROPOSAL_GENERATED
+      - HITL_APPROVAL_DECIDED
+
+  depthead:
+    boxId: depthead
+    keyPrefix: "aegis:box:depthead"
+    channel: "aegis:channel:depthead"
+    targetRole: DEPARTMENT_MANAGER
+    defaultActor: "Dr. K. Raman (HOD Electrical & Electronics)"
+    description: "Receives EEE-specific room status, power grid alerts, and departmental faculty allocations."
+    allowedEvents:
+      - EEE_POWER_TRIP
+      - LAB_SCHEDULE_UPDATED
+      - FACULTY_ROSTER_ALERT
+
+paths:
+  /api/incidents:
+    get:
+      summary: List Campus Incidents
+      description: Returns active incidents filtered according to the caller's role (RBAC).
+      parameters:
+        - name: x-aegis-role
+          in: header
+          required: false
+          schema:
+            type: string
+            enum: [REQUESTER, DEPARTMENT_MANAGER, TECHNICIAN, FACILITIES_ADMIN, PROCUREMENT_APPROVER]
+      responses:
+        '200':
+          description: List of incidents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  incidents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Incident'
+    post:
+      summary: Report Incident with Photo Evidence
+      description: |
+        Submits a new campus disruption report. Performs AI extraction, entity resolution,
+        correlation check, and publishes to Redis 'superadmin' and 'student' boxes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  example: "Main circuit breaker tripped in Exam Hall B-204"
+                roomHint:
+                  type: string
+                  example: "Hall B-204"
+                assetHint:
+                  type: string
+                  example: "Breaker B-01"
+                photoUrl:
+                  type: string
+                  description: Base64 data URI or public URL of photo evidence
+                source:
+                  type: string
+                  default: WEB
+      responses:
+        '200':
+          description: Incident successfully logged and dispatched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  incident:
+                    $ref: '#/components/schemas/Incident'
+                  correlation:
+                    type: object
+                  workOrder:
+                    type: object
+
+  /api/plans:
+    get:
+      summary: List Recovery Plans for Incident
+      parameters:
+        - name: incidentId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of generated recovery plans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RecoveryPlan'
+    post:
+      summary: Generate Deterministic Recovery Plans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [incidentId]
+              properties:
+                incidentId:
+                  type: string
+      responses:
+        '200':
+          description: Newly proposed plans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RecoveryPlan'
+
+  /api/plans/{id}/approve:
+    post:
+      summary: Approve or Reject Recovery Plan (Human-in-the-Loop)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [APPROVED, REJECTED]
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Decision applied and dispatched to technician
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan:
+                    $ref: '#/components/schemas/RecoveryPlan'
+                  incident:
+                    $ref: '#/components/schemas/Incident'
+
+  /api/blast-radius:
+    get:
+      summary: Compute Blast Radius & Disruption Matrix
+      parameters:
+        - name: incidentId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Blast radius calculations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  blastRadius:
+                    $ref: '#/components/schemas/BlastRadius'
+
+  /api/analytics:
+    get:
+      summary: Real-Time Campus Operations Analytics
+      responses:
+        '200':
+          description: Operations KPIs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  openIncidents:
+                    type: integer
+                  avgResolutionMins:
+                    type: number
+                  slaComplianceRate:
+                    type: number
+
+  /api/demo:
+    post:
+      summary: Seed or Reset Demo Scenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [RESET_ALL, SEED_POWER_OUTAGE]
+      responses:
+        '200':
+          description: Scenario seeded
+
+  /api/redis/sync:
+    get:
+      summary: Poll or Stream Events from a Specific Redis Box
+      parameters:
+        - name: box
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [student, staff, technician, superadmin, depthead]
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of events queued in this Redis box
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  box:
+                    type: string
+                  channel:
+                    type: string
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RedisEvent'
+    post:
+      summary: Publish an Event to a Specific Redis Box
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [box, type, payload]
+              properties:
+                box:
+                  type: string
+                  enum: [student, staff, technician, superadmin, depthead]
+                type:
+                  type: string
+                  example: "TICKET_SUBMITTED"
+                payload:
+                  type: object
+      responses:
+        '200':
+          description: Event published to Redis channel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  eventId:
+                    type: string
+                  box:
+                    type: string
+
+components:
+  schemas:
+    Incident:
+      type: object
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          enum: [ELECTRICAL, HVAC, IT, PLUMBING, SAFETY, CIVIL]
+        severity:
+          type: string
+          enum: [P1, P2, P3, P4]
+        status:
+          type: string
+          enum: [REPORTED, TRIAGED, IN_PROGRESS, RESOLVED, CLOSED, REJECTED, MERGED]
+        summary:
+          type: string
+        roomId:
+          type: string
+          nullable: true
+        photoUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    RecoveryPlan:
+      type: object
+      properties:
+        id:
+          type: string
+        incidentId:
+          type: string
+        title:
+          type: string
+        kind:
+          type: string
+          enum: [RAPID_RESTORE, REALLOCATE_RESOURCE, SCHEDULED_MAINTENANCE, SAFE_SHUTDOWN]
+        status:
+          type: string
+          enum: [PROPOSED, APPROVED, REJECTED, EXECUTED, FAILED]
+        costEstimate:
+          type: number
+        downtimeMins:
+          type: integer
+        riskScore:
+          type: integer
+
+    BlastRadius:
+      type: object
+      properties:
+        incidentId:
+          type: string
+        primaryRoomCode:
+          type: string
+        secondaryRoomCodes:
+          type: array
+          items:
+            type: string
+        affectedStudentsCount:
+          type: integer
+        examRiskLevel:
+          type: string
+          enum: [NONE, ELEVATED, CRITICAL]
+
+    RedisEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        box:
+          type: string
+        type:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        payload:
+          type: object

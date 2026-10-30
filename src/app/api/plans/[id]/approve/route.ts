@@ -8,6 +8,7 @@ import { mapPlan, mapIncident } from '@/lib/repo/mappers';
 import type { PlanRow, IncidentRow } from '@/lib/repo/rows';
 import type { RecoveryPlan } from '@/lib/domain/types';
 import { sendInApp } from '@/lib/notifications/dispatcher';
+import { publishToRedisBox } from '@/lib/redis/redisClient';
 
 /**
  * POST /api/plans/[id]/approve — approve or reject a recovery plan.
@@ -186,6 +187,47 @@ export async function POST(
         },
         incidentId: plan.incidentId,
       });
+    }
+
+        // Broadcast to Redis Boxes
+    try {
+      if (decision === 'APPROVED') {
+        // 1. Dispatch to Field Technician box
+        await publishToRedisBox('technician', 'WORK_ORDER_APPROVED_FOR_DISPATCH', {
+          planId,
+          incidentId: plan.incidentId,
+          planTitle: plan.label,
+          approvedBy: actor.fullName,
+          actions: plan.actions,
+          status: 'ACTIVE_DISPATCH',
+          priority: 'CRITICAL',
+          assignedTechnician: 'Rajesh Kumar',
+        });
+
+        // 2. Notify Student box
+        await publishToRedisBox('student', 'RECOVERY_PLAN_APPROVED', {
+          planId,
+          incidentId: plan.incidentId,
+          message: 'Recovery plan has been approved by Super Admin. Field team is actively resolving the issue.',
+          status: 'IN_PROGRESS',
+        });
+
+        // 3. Notify Faculty/Staff & Dept Head boxes
+        await publishToRedisBox('staff', 'EXAM_SHIELD_ACTIVATED', {
+          planId,
+          incidentId: plan.incidentId,
+          message: 'Academic continuity shield active. Lecture/exam relocated to backup hall.',
+        });
+
+        await publishToRedisBox('depthead', 'DEPT_CONTINUITY_ACTION_TAKEN', {
+          planId,
+          incidentId: plan.incidentId,
+          department: 'Electrical & Electronics',
+          status: 'CONTAINED',
+        });
+      }
+    } catch (redisErr) {
+      console.warn('Non-blocking Redis sync error in approval:', redisErr);
     }
 
     return NextResponse.json({

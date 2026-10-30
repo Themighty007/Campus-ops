@@ -48,6 +48,41 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   // Notification banner visibility
   const [showResolvedAlert, setShowResolvedAlert] = useState(true);
 
+  // Real-Time Redis Sync for Student Box
+  React.useEffect(() => {
+    let active = true;
+    const pollRedis = async () => {
+      try {
+        const res = await fetch('/api/redis/sync?box=student');
+        const data = await res.json();
+        if (active && data.events && data.events.length > 0) {
+          const resolvedEvt = data.events.find((e: any) => e.type === 'RESOLUTION_CONFIRMED');
+          if (resolvedEvt) {
+            setShowResolvedAlert(true);
+            setQueries((prev) =>
+              prev.map((q) =>
+                q.id === 'QRY-2041' || q.status !== 'RESOLVED'
+                  ? {
+                      ...q,
+                      status: 'RESOLVED',
+                      resolutionNote: resolvedEvt.payload?.note || 'This issue has been solved. Thank you for notifying us.',
+                    }
+                  : q
+              )
+            );
+          }
+        }
+      } catch {}
+    };
+
+    pollRedis();
+    const interval = setInterval(pollRedis, 3000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   // Interactive KPI modal state
   const [activeModal, setActiveModal] = useState<'queries' | 'resolution' | 'seats' | 'status' | null>(null);
 

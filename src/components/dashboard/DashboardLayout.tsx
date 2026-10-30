@@ -13,6 +13,65 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+interface NavTab {
+  id: string;
+  label: string;
+  icon: string;
+  badge?: string;
+  activeBg: string;
+}
+
+const ROLE_NAV_TABS: Record<PersonaId, NavTab[]> = {
+  // STUDENT: Strictly 2–3 tabs on the left side
+  student: [
+    { id: 'overview', label: 'CRM Overview', icon: '📊', badge: 'LIVE', activeBg: 'bg-[#86EFAC] text-black' },
+    { id: 'queries', label: 'My Queries & Photos', icon: '📋', badge: '2 ACTIVE', activeBg: 'bg-[#FDE047] text-black' },
+    { id: 'relocated', label: 'Room Relocations', icon: '📍', badge: 'B-204', activeBg: 'bg-[#F472B6] text-black' },
+  ],
+
+  // TEACHER / STAFF: Strictly 3–4 tabs
+  teacher: [
+    { id: 'overview', label: 'Faculty Overview', icon: '👨‍🏫', badge: 'LIVE', activeBg: 'bg-[#86EFAC] text-black' },
+    { id: 'continuity', label: 'Exam Continuity Shield', icon: '🛡️', badge: '1 AT RISK', activeBg: 'bg-[#FDE047] text-black' },
+    { id: 'queries', label: 'Maintenance Requests', icon: '📋', badge: '3', activeBg: 'bg-[#7DD3FC] text-black' },
+    { id: 'labs', label: 'Lab Infrastructure', icon: '⚡', badge: '4 LABS', activeBg: 'bg-[#F472B6] text-black' },
+  ],
+
+  // TECHNICIAN: Strictly 3–4 tabs focused on work orders & field repair
+  technician: [
+    { id: 'overview', label: 'Field Ops Radar', icon: '⏱️', badge: 'ACTIVE', activeBg: 'bg-[#86EFAC] text-black' },
+    { id: 'workorders', label: 'Work Orders (Photos)', icon: '🔧', badge: '1 URGENT', activeBg: 'bg-[#FDE047] text-black' },
+    { id: 'parts', label: 'Parts Requisition', icon: '📦', badge: 'MCB-63A', activeBg: 'bg-[#F472B6] text-black' },
+  ],
+
+  // SUPER ADMIN: Strictly 5–7 tabs, each strictly 1 page with visual representations
+  superadmin: [
+    { id: 'overview', label: 'Command Overview', icon: '📊', badge: 'LIVE', activeBg: 'bg-[#86EFAC] text-black' },
+    { id: 'ai-reviewer', label: 'AI Reviewer (HITL)', icon: '🤖', badge: '1 PENDING', activeBg: 'bg-[#FDE047] text-black' },
+    { id: 'live-incidents', label: 'Disruptions Queue', icon: '🚨', badge: '4 ACTIVE', activeBg: 'bg-[#F472B6] text-black' },
+    { id: 'blast-cockpit', label: 'Blast Radius Cockpit', icon: '⚡', badge: 'AI', activeBg: 'bg-[#7DD3FC] text-black' },
+    { id: 'users', label: 'Personnel & Access', icon: '👥', badge: '5 ROLES', activeBg: 'bg-[#FEF9C3] text-black' },
+    { id: 'ai-chat', label: 'Technical AI Copilot', icon: '💬', badge: 'GEMINI', activeBg: 'bg-[#DCFCE7] text-black' },
+    { id: 'audit', label: 'Audit Trail (SoD)', icon: '🔒', badge: 'SHA-256', activeBg: 'bg-zinc-700 text-white' },
+  ],
+
+  // DEPARTMENT HEAD: Strictly 5–6 items strictly isolated to EEE Department
+  depthead: [
+    { id: 'overview', label: 'EEE Executive Health', icon: '⚡', badge: '99.4%', activeBg: 'bg-[#86EFAC] text-black' },
+    { id: 'hall-status', label: 'EEE Rooms & Labs', icon: '🏢', badge: '4 HALLS', activeBg: 'bg-[#7DD3FC] text-black' },
+    { id: 'dept-tickets', label: 'EEE Incident Stream', icon: '📋', badge: '2 OPEN', activeBg: 'bg-[#FDE047] text-black' },
+    { id: 'exam-protection', label: 'Exam Continuity Shield', icon: '🛡️', badge: 'SHIELDED', activeBg: 'bg-[#F472B6] text-black' },
+    { id: 'faculty-roster', label: 'Faculty & Staff Roster', icon: '👨‍🏫', badge: '12 ACTIVE', activeBg: 'bg-[#FEF9C3] text-black' },
+  ],
+
+  // INVENTORY / STORES:
+  inventory: [
+    { id: 'overview', label: 'Inventory Overview', icon: '📦', badge: 'LIVE', activeBg: 'bg-[#86EFAC] text-black' },
+    { id: 'requisitions', label: 'Part Requisitions', icon: '📋', badge: '1 PENDING', activeBg: 'bg-[#FDE047] text-black' },
+    { id: 'stock', label: 'Stock Levels & SKUs', icon: '📊', badge: '4 SKUS', activeBg: 'bg-[#7DD3FC] text-black' },
+  ],
+};
+
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   currentPersona,
   onSwitchPersona,
@@ -22,6 +81,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
 }) => {
   const personasList = Object.values(DEMO_PERSONAS);
+  const currentTabs = ROLE_NAV_TABS[currentPersona.id] || ROLE_NAV_TABS.student;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#FAF9F5]">
@@ -59,81 +119,47 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             />
           </div>
 
-          {/* Navigation Links */}
+          {/* DYNAMIC ROLE-SPECIFIC NAVIGATION LINKS */}
           <div className="mt-5 space-y-1">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 px-2 mb-2 font-bold">
-              PORTAL VIEWS
-            </p>
-
-            <button
-              onClick={() => onSelectTab('overview')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black transition-all ${
-                activeTab === 'overview'
-                  ? 'bg-[#86EFAC] text-[#18181B] shadow-brutal-sm'
-                  : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm">📊</span>
-                <span>CRM Overview</span>
-              </div>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
-                activeTab === 'overview' ? 'bg-[#18181B] text-[#86EFAC]' : 'bg-zinc-800 text-zinc-400'
-              }`}>
-                LIVE
+            <div className="flex items-center justify-between px-2 mb-2">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold">
+                PORTAL VIEWS
+              </p>
+              <span className="text-[9px] font-mono bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
+                {currentTabs.length} TABS
               </span>
-            </button>
+            </div>
 
-            <button
-              onClick={() => onSelectTab('queries')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black transition-all ${
-                activeTab === 'queries'
-                  ? 'bg-[#FDE047] text-[#18181B] shadow-brutal-sm'
-                  : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm">📋</span>
-                <span>Work Orders & Queries</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-zinc-800 text-zinc-400">
-                4
-              </span>
-            </button>
-
-            <button
-              onClick={() => onSelectTab('cockpit')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black transition-all ${
-                activeTab === 'cockpit'
-                  ? 'bg-[#F472B6] text-[#18181B] shadow-brutal-sm'
-                  : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm">⚡</span>
-                <span>Blast Radius Cockpit</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-zinc-800 text-zinc-400">
-                AI
-              </span>
-            </button>
-
-            <button
-              onClick={() => onSelectTab('status')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black transition-all ${
-                activeTab === 'status'
-                  ? 'bg-[#7DD3FC] text-[#18181B] shadow-brutal-sm'
-                  : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm">🏢</span>
-                <span>Campus Rooms & Labs</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-zinc-800 text-zinc-400">
-                7 Halls
-              </span>
-            </button>
+            {currentTabs.map((tab) => {
+              const isSelected = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onSelectTab(tab.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black transition-all ${
+                    isSelected
+                      ? `${tab.activeBg} shadow-brutal-sm scale-[1.02]`
+                      : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm">{tab.icon}</span>
+                    <span className="truncate">{tab.label}</span>
+                  </div>
+                  {tab.badge && (
+                    <span
+                      className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold shrink-0 ${
+                        isSelected
+                          ? 'bg-[#18181B] text-white'
+                          : 'bg-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -169,7 +195,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           MAIN CONTENT AREA
       ========================================================================= */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* TOP BAR: Role Switcher & Judge Fast-Toggle */}
+        {/* TOP BAR: Role Switcher & Fast-Toggle */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b-2 border-[#18181B] px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3">
             <span className="badge-sticker bg-[#FEF9C3] text-[#18181B] text-xs font-mono">
@@ -180,7 +206,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
           </div>
 
-          {/* 5-Role 1-Click Fast Switcher for Presentation & Judges */}
+          {/* 5-Role 1-Click Fast Switcher for Presentation & Testing */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-mono font-black uppercase text-zinc-500 mr-1 hidden lg:inline">
               SWITCH ROLE:

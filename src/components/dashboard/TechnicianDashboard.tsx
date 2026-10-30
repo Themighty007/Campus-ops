@@ -90,6 +90,24 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({ person
     });
 
     if (newStatus === 'COMPLETED') {
+      try {
+        fetch('/api/redis/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            box: 'student',
+            type: 'RESOLUTION_CONFIRMED',
+            payload: {
+              ticketId: selectedOrder.id,
+              room: selectedOrder.room,
+              resolvedBy: 'Rajesh Kumar (Lead Field Technician)',
+              note: 'This issue has been solved. Thank you for notifying us.',
+              status: 'RESOLVED',
+            },
+          }),
+        }).catch(() => {});
+      } catch {}
+
       setStatusMessage(
         '✓ Work order marked COMPLETED! Automated receipt sent to student: "This issue has been solved. Thank you for notifying us."'
       );

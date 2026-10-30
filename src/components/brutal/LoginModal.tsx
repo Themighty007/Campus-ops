@@ -241,7 +241,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <p className="text-[11px] font-black uppercase tracking-wider text-zinc-500">
                   Instant Judge Personas (1-Click Launch)
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {/* Persona 1: Technician */}
                   <div
                     onClick={() => handleSelectPersona('TECHNICIAN', 'Rajesh Kumar (Technician)', 'technician')}
@@ -254,7 +254,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                     <span className="text-xs font-black text-[#18181B] block truncate">Rajesh Kumar</span>
                     <span className="badge-sticker bg-[#DCFCE7] text-[8px] py-0 px-1 mt-0.5">TECHNICIAN</span>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-1">Field Electrician</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-1">Field Specialist</p>
                   </div>
 
                   {/* Persona 2: Super Admin */}
@@ -269,22 +269,37 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                     <span className="text-xs font-black text-[#18181B] block truncate">Chief Controller</span>
                     <span className="badge-sticker bg-[#FDA4AF] text-[8px] py-0 px-1 mt-0.5">SUPER ADMIN</span>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-1">Full Campus Radar</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-1">Global Command</p>
                   </div>
 
-                  {/* Persona 3: Procurement Approver */}
+                  {/* Persona 3: Department Head */}
+                  <div
+                    onClick={() => handleSelectPersona('DEPARTMENT_MANAGER', 'Dr. K. Raman (EEE Dept Head)', 'depthead')}
+                    className={`card-brutal p-3 bg-white cursor-pointer hover:bg-emerald-50/50 transition-all ${
+                      currentRole === 'DEPARTMENT_MANAGER' ? 'ring-2 ring-[#86EFAC] ring-offset-2' : ''
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[#FEF9C3] border-2 border-[#18181B] flex items-center justify-center font-black text-xs mb-2">
+                      👨‍🏫
+                    </div>
+                    <span className="text-xs font-black text-[#18181B] block truncate">Dr. K. Raman</span>
+                    <span className="badge-sticker bg-[#FEF9C3] text-[8px] py-0 px-1 mt-0.5">DEPT HEAD</span>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-1">EEE In-Charge</p>
+                  </div>
+
+                  {/* Persona 4: Procurement Lead */}
                   <div
                     onClick={() => handleSelectPersona('PROCUREMENT_APPROVER', 'S. Venkatesh (Inventory Lead)', 'inventory')}
                     className={`card-brutal p-3 bg-white cursor-pointer hover:bg-emerald-50/50 transition-all ${
                       currentRole === 'PROCUREMENT_APPROVER' ? 'ring-2 ring-[#86EFAC] ring-offset-2' : ''
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-[#FEF9C3] border-2 border-[#18181B] flex items-center justify-center font-black text-xs mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#E0F2FE] border-2 border-[#18181B] flex items-center justify-center font-black text-xs mb-2">
                       📦
                     </div>
                     <span className="text-xs font-black text-[#18181B] block truncate">S. Venkatesh</span>
-                    <span className="badge-sticker bg-[#FEF9C3] text-[8px] py-0 px-1 mt-0.5">PROCUREMENT</span>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-1">Inventory Approver</p>
+                    <span className="badge-sticker bg-[#E0F2FE] text-[8px] py-0 px-1 mt-0.5">PROCUREMENT</span>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-1">Central Stores</p>
                   </div>
                 </div>
               </div>

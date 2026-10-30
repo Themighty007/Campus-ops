@@ -9,6 +9,7 @@ import { CATEGORY_DEPARTMENT, CATEGORY_SKILL, SLA_MINUTES } from '@/lib/domain/e
 import { mapIncident } from '@/lib/repo/mappers';
 import type { IncidentRow } from '@/lib/repo/rows';
 import { sendInApp } from '@/lib/notifications/dispatcher';
+import { publishToRedisBox } from '@/lib/redis/redisClient';
 
 /**
  * GET /api/incidents — list open incidents visible to the current user.
@@ -286,6 +287,51 @@ export async function POST(req: NextRequest) {
       } catch {
         // blast radius is non-critical
       }
+    }
+
+        // 11. Cross-role Redis synchronization (Zero-Lag Broadcast to 5 Boxes)
+    const photoUrl = body.photoUrl || body.imageUrl || body.photo || null;
+
+    try {
+      // Notify Super Admin box with full incident & photo for immediate YES/NO review
+      await publishToRedisBox('superadmin', 'NEW_INCIDENT_REPORTED', {
+        incidentId: incident.id,
+        reporter: actor.fullName,
+        roomCode: roomHint || 'Hall B-204',
+        category: extraction.category,
+        severity,
+        summary: extraction.summary,
+        photoUrl,
+        aiTriageScore: extraction.confidence,
+        requiresApproval: true,
+        proposedAction: 'Plan Alpha: Rapid Switch to Backup Generator + Dispatch Field Technician',
+      });
+
+      // Notify Student box of confirmed receipt
+      await publishToRedisBox('student', 'TICKET_SUBMITTED', {
+        ticketId: incident.id,
+        summary: extraction.summary,
+        roomCode: roomHint || 'Hall B-204',
+        status: incident.status,
+        photoUrl,
+        note: 'Your report and photo evidence were received. Super Admin review in progress.',
+      });
+
+      // If work order was auto-created, queue in Technician box with photo
+      if (workOrderId) {
+        await publishToRedisBox('technician', 'WORK_ORDER_DISPATCHED', {
+          workOrderId,
+          incidentId: incident.id,
+          title: extraction.summary,
+          roomCode: roomHint || 'Hall B-204',
+          priority: severity,
+          photoUrl,
+          stage: 'ASSIGNED',
+          assignedTo: 'Rajesh Kumar',
+        });
+      }
+    } catch (redisErr) {
+      console.warn('Non-blocking Redis publish error:', redisErr);
     }
 
     return NextResponse.json({

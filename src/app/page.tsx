@@ -14,6 +14,7 @@ import { TeacherDashboard } from '@/components/dashboard/TeacherDashboard';
 import { TechnicianDashboard } from '@/components/dashboard/TechnicianDashboard';
 import { SuperAdminDashboard } from '@/components/dashboard/SuperAdminDashboard';
 import { InventoryDashboard } from '@/components/dashboard/InventoryDashboard';
+import { DepartmentHeadDashboard } from '@/components/dashboard/DepartmentHeadDashboard';
 import { WorkOrdersQueriesView } from '@/components/dashboard/WorkOrdersQueriesView';
 import { CampusRoomsLabsView } from '@/components/dashboard/CampusRoomsLabsView';
 import { DEMO_PERSONAS, PersonaId } from '@/types/personas';
@@ -226,82 +227,194 @@ export default function HomePage() {
         onSwitchPersona={(id) => {
           setActivePersonaId(id);
           setCurrentRole(DEMO_PERSONAS[id].role);
+          setDashboardTab('overview');
         }}
         onExitToLanding={() => setViewMode('landing')}
         activeTab={dashboardTab}
         onSelectTab={(tab) => setDashboardTab(tab)}
       >
-        {/* TAB 1: WORK ORDERS & QUERIES VIEW */}
-        {dashboardTab === 'queries' && (
-          <WorkOrdersQueriesView
-            persona={currentPersona}
-            onOpenReport={() => setReportModalOpen(true)}
-            onOpenCockpit={() => setDashboardTab('cockpit')}
-          />
-        )}
-
-        {/* TAB 2: BLAST RADIUS COCKPIT (AI) — NEVER BLANK! */}
-        {dashboardTab === 'cockpit' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-[#18181B] uppercase tracking-tight">
-                Deterministic Blast Radius & AI Recovery Cockpit
-              </h2>
-              <button
-                onClick={() => setDashboardTab('overview')}
-                className="px-3 py-1.5 bg-white border-2 border-black rounded-lg text-xs font-bold hover:bg-zinc-100"
-              >
-                ← Return to Overview
-              </button>
-            </div>
-            <BlastRadiusCockpit
-              incident={selectedIncident}
-              blastRadius={blastRadius}
-              plans={plans}
-              currentRole={currentRole}
-              onGeneratePlans={handleGeneratePlans}
-              onApprovePlan={handleApprovePlan}
-            />
-          </div>
-        )}
-
-        {/* TAB 3: CAMPUS ROOMS & LABS RADAR */}
-        {dashboardTab === 'status' && (
-          <CampusRoomsLabsView
-            persona={currentPersona}
-            onOpenCockpit={() => setDashboardTab('cockpit')}
-          />
-        )}
-
-        {/* TAB 4: CRM OVERVIEW (ROLE-SPECIFIC) */}
-        {dashboardTab === 'overview' && (
+        {/* =========================================================================
+            ROLE 1: STUDENT (Aarav Patel) — Strictly 2-3 Tabs
+            Tabs: 'overview', 'queries', 'relocated'
+        ========================================================================= */}
+        {activePersonaId === 'student' && (
           <>
-            {activePersonaId === 'student' && (
+            {dashboardTab === 'overview' && (
               <StudentDashboard
                 persona={currentPersona}
                 onOpenReportModal={() => setReportModalOpen(true)}
-                onOpenCockpit={() => setDashboardTab('cockpit')}
+                onOpenCockpit={() => setDashboardTab('relocated')}
               />
             )}
-            {activePersonaId === 'teacher' && (
+            {dashboardTab === 'queries' && (
+              <WorkOrdersQueriesView
+                persona={currentPersona}
+                onOpenReport={() => setReportModalOpen(true)}
+                onOpenCockpit={() => setDashboardTab('relocated')}
+              />
+            )}
+            {dashboardTab === 'relocated' && (
+              <CampusRoomsLabsView
+                persona={currentPersona}
+                onOpenCockpit={() => setDashboardTab('overview')}
+              />
+            )}
+          </>
+        )}
+
+        {/* =========================================================================
+            ROLE 2: TEACHER / FACULTY (Prof. Ananya Sen) — Strictly 3-4 Tabs
+            Tabs: 'overview', 'continuity', 'queries', 'labs'
+        ========================================================================= */}
+        {activePersonaId === 'teacher' && (
+          <>
+            {dashboardTab === 'overview' && (
               <TeacherDashboard persona={currentPersona} />
             )}
-            {activePersonaId === 'technician' && (
+            {dashboardTab === 'continuity' && (
+              <CampusRoomsLabsView
+                persona={currentPersona}
+                onOpenCockpit={() => setDashboardTab('overview')}
+              />
+            )}
+            {dashboardTab === 'queries' && (
+              <WorkOrdersQueriesView
+                persona={currentPersona}
+                onOpenReport={() => setReportModalOpen(true)}
+                onOpenCockpit={() => setDashboardTab('continuity')}
+              />
+            )}
+            {dashboardTab === 'labs' && (
+              <CampusRoomsLabsView
+                persona={currentPersona}
+                onOpenCockpit={() => setDashboardTab('overview')}
+              />
+            )}
+          </>
+        )}
+
+        {/* =========================================================================
+            ROLE 3: FIELD TECHNICIAN (Rajesh Kumar) — Strictly 3-4 Tabs
+            Tabs: 'overview', 'workorders', 'parts'
+        ========================================================================= */}
+        {activePersonaId === 'technician' && (
+          <>
+            {dashboardTab === 'overview' && (
               <TechnicianDashboard
                 persona={currentPersona}
                 onWorkOrderCompleted={() => fetchIncidents()}
               />
             )}
-            {activePersonaId === 'superadmin' && (
-              <SuperAdminDashboard
+            {dashboardTab === 'workorders' && (
+              <WorkOrdersQueriesView
                 persona={currentPersona}
-                onOpenCockpit={() => setDashboardTab('cockpit')}
+                onOpenReport={() => setReportModalOpen(true)}
+                onOpenCockpit={() => setDashboardTab('overview')}
               />
             )}
-            {activePersonaId === 'inventory' && (
+            {dashboardTab === 'parts' && (
               <InventoryDashboard persona={currentPersona} />
             )}
           </>
+        )}
+
+        {/* =========================================================================
+            ROLE 4: SUPER ADMIN (Chief Controller) — Strictly 5-7 Tabs, 1 Page Each
+            Tabs: 'overview', 'ai-reviewer', 'live-incidents', 'blast-cockpit', 'users', 'ai-chat', 'audit'
+        ========================================================================= */}
+        {activePersonaId === 'superadmin' && (
+          <>
+            {dashboardTab === 'overview' && (
+              <SuperAdminDashboard
+                persona={currentPersona}
+                activeSubTab="overview"
+                onSelectSubTab={(tab) => setDashboardTab(tab)}
+                onOpenCockpit={() => setDashboardTab('blast-cockpit')}
+              />
+            )}
+            {dashboardTab === 'ai-reviewer' && (
+              <SuperAdminDashboard
+                persona={currentPersona}
+                activeSubTab="ai-reviewer"
+                onSelectSubTab={(tab) => setDashboardTab(tab)}
+                onOpenCockpit={() => setDashboardTab('blast-cockpit')}
+              />
+            )}
+            {dashboardTab === 'live-incidents' && (
+              <WorkOrdersQueriesView
+                persona={currentPersona}
+                onOpenReport={() => setReportModalOpen(true)}
+                onOpenCockpit={() => setDashboardTab('blast-cockpit')}
+              />
+            )}
+            {dashboardTab === 'blast-cockpit' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-black text-[#18181B] uppercase tracking-tight">
+                    Deterministic Blast Radius & AI Recovery Cockpit
+                  </h2>
+                  <button
+                    onClick={() => setDashboardTab('overview')}
+                    className="px-3 py-1.5 bg-white border-2 border-black rounded-lg text-xs font-bold hover:bg-zinc-100 shadow-brutal-sm"
+                  >
+                    ← Return to Overview
+                  </button>
+                </div>
+                <BlastRadiusCockpit
+                  incident={selectedIncident}
+                  blastRadius={blastRadius}
+                  plans={plans}
+                  currentRole={currentRole}
+                  onGeneratePlans={handleGeneratePlans}
+                  onApprovePlan={handleApprovePlan}
+                />
+              </div>
+            )}
+            {dashboardTab === 'users' && (
+              <SuperAdminDashboard
+                persona={currentPersona}
+                activeSubTab="users"
+                onSelectSubTab={(tab) => setDashboardTab(tab)}
+                onOpenCockpit={() => setDashboardTab('blast-cockpit')}
+              />
+            )}
+            {dashboardTab === 'ai-chat' && (
+              <SuperAdminDashboard
+                persona={currentPersona}
+                activeSubTab="ai-chat"
+                onSelectSubTab={(tab) => setDashboardTab(tab)}
+                onOpenCockpit={() => setDashboardTab('blast-cockpit')}
+              />
+            )}
+            {dashboardTab === 'audit' && (
+              <SuperAdminDashboard
+                persona={currentPersona}
+                activeSubTab="audit"
+                onSelectSubTab={(tab) => setDashboardTab(tab)}
+                onOpenCockpit={() => setDashboardTab('blast-cockpit')}
+              />
+            )}
+          </>
+        )}
+
+        {/* =========================================================================
+            ROLE 5: DEPARTMENT HEAD (Dr. K. Raman — EEE In-Charge) — 5-6 Items
+            Tabs: 'overview', 'hall-status', 'dept-tickets', 'exam-protection', 'faculty-roster'
+        ========================================================================= */}
+        {activePersonaId === 'depthead' && (
+          <DepartmentHeadDashboard
+            persona={currentPersona}
+            activeTab={dashboardTab}
+            onSelectTab={(tab) => setDashboardTab(tab)}
+          />
+        )}
+
+        {/* =========================================================================
+            ROLE 6: STORES & PROCUREMENT (S. Venkatesh)
+            Tabs: 'overview', 'requisitions', 'stock'
+        ========================================================================= */}
+        {activePersonaId === 'inventory' && (
+          <InventoryDashboard persona={currentPersona} />
         )}
       </DashboardLayout>
     );
