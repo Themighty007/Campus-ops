@@ -14,6 +14,8 @@ import { TeacherDashboard } from '@/components/dashboard/TeacherDashboard';
 import { TechnicianDashboard } from '@/components/dashboard/TechnicianDashboard';
 import { SuperAdminDashboard } from '@/components/dashboard/SuperAdminDashboard';
 import { InventoryDashboard } from '@/components/dashboard/InventoryDashboard';
+import { WorkOrdersQueriesView } from '@/components/dashboard/WorkOrdersQueriesView';
+import { CampusRoomsLabsView } from '@/components/dashboard/CampusRoomsLabsView';
 import { DEMO_PERSONAS, PersonaId } from '@/types/personas';
 import type { UserRole } from '@/lib/domain/enums';
 
@@ -229,35 +231,57 @@ export default function HomePage() {
         activeTab={dashboardTab}
         onSelectTab={(tab) => setDashboardTab(tab)}
       >
-        {/* Render role dashboard based on activePersonaId or tab */}
-        {dashboardTab === 'cockpit' ? (
-          <div className="space-y-6">
+        {/* TAB 1: WORK ORDERS & QUERIES VIEW */}
+        {dashboardTab === 'queries' && (
+          <WorkOrdersQueriesView
+            persona={currentPersona}
+            onOpenReport={() => setReportModalOpen(true)}
+            onOpenCockpit={() => setDashboardTab('cockpit')}
+          />
+        )}
+
+        {/* TAB 2: BLAST RADIUS COCKPIT (AI) — NEVER BLANK! */}
+        {dashboardTab === 'cockpit' && (
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black text-[#18181B] uppercase">
-                Deterministic Blast Radius & Recovery Cockpit
+              <h2 className="text-lg font-black text-[#18181B] uppercase tracking-tight">
+                Deterministic Blast Radius & AI Recovery Cockpit
               </h2>
               <button
                 onClick={() => setDashboardTab('overview')}
-                className="px-3 py-1.5 bg-white border border-black rounded-lg text-xs font-bold"
+                className="px-3 py-1.5 bg-white border-2 border-black rounded-lg text-xs font-bold hover:bg-zinc-100"
               >
-                ← Back to Overview
+                ← Return to Overview
               </button>
             </div>
-            {selectedIncident && (
-              <BlastRadiusCockpit
-                incident={selectedIncident}
-                blastRadius={blastRadius}
-                plans={plans}
-                currentRole={currentRole}
-                onGeneratePlans={handleGeneratePlans}
-                onApprovePlan={handleApprovePlan}
-              />
-            )}
+            <BlastRadiusCockpit
+              incident={selectedIncident}
+              blastRadius={blastRadius}
+              plans={plans}
+              currentRole={currentRole}
+              onGeneratePlans={handleGeneratePlans}
+              onApprovePlan={handleApprovePlan}
+            />
           </div>
-        ) : (
+        )}
+
+        {/* TAB 3: CAMPUS ROOMS & LABS RADAR */}
+        {dashboardTab === 'status' && (
+          <CampusRoomsLabsView
+            persona={currentPersona}
+            onOpenCockpit={() => setDashboardTab('cockpit')}
+          />
+        )}
+
+        {/* TAB 4: CRM OVERVIEW (ROLE-SPECIFIC) */}
+        {dashboardTab === 'overview' && (
           <>
             {activePersonaId === 'student' && (
-              <StudentDashboard persona={currentPersona} />
+              <StudentDashboard
+                persona={currentPersona}
+                onOpenReportModal={() => setReportModalOpen(true)}
+                onOpenCockpit={() => setDashboardTab('cockpit')}
+              />
             )}
             {activePersonaId === 'teacher' && (
               <TeacherDashboard persona={currentPersona} />
@@ -339,16 +363,14 @@ export default function HomePage() {
 
       {/* 4. BLAST RADIUS & RECOVERY COCKPIT (Recreating Reference Image 1) */}
       <div id="blast-cockpit">
-        {selectedIncident && (
-          <BlastRadiusCockpit
-            incident={selectedIncident}
-            blastRadius={blastRadius}
-            plans={plans}
-            currentRole={currentRole}
-            onGeneratePlans={handleGeneratePlans}
-            onApprovePlan={handleApprovePlan}
-          />
-        )}
+        <BlastRadiusCockpit
+          incident={selectedIncident}
+          blastRadius={blastRadius}
+          plans={plans}
+          currentRole={currentRole}
+          onGeneratePlans={handleGeneratePlans}
+          onApprovePlan={handleApprovePlan}
+        />
       </div>
 
       {/* 5. FOOTER RECREATING REFERENCE IMAGE 2 (Black Grid, Pixel Art Badge) */}

@@ -67,6 +67,15 @@ const DEMO_ROLE_PROFILES: Record<UserRole, string> = {
   SYSTEM_ADMIN: 'sysadmin@aegis.demo',
 };
 
+const DEMO_ROLE_NAMES: Record<UserRole, string> = {
+  REQUESTER: 'Aarav Patel',
+  TECHNICIAN: 'Rajesh Kumar',
+  DEPARTMENT_MANAGER: 'Dr. K. Raman',
+  FACILITIES_ADMIN: 'Chief Controller',
+  PROCUREMENT_APPROVER: 'S. Venkatesh',
+  SYSTEM_ADMIN: 'System Admin',
+};
+
 async function getDemoSession(supabase: SupabaseClient): Promise<Session | null> {
   // Dynamic import to read headers only in server context
   const { headers } = await import('next/headers');
@@ -78,13 +87,31 @@ async function getDemoSession(supabase: SupabaseClient): Promise<Session | null>
   const email = DEMO_ROLE_PROFILES[role];
   if (!email) return null;
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('email', email)
-    .maybeSingle<ProfileRow>();
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle<ProfileRow>();
 
-  if (!profile) return null;
+    if (profile) {
+      return { actor: mapActor(profile), supabase };
+    }
+  } catch {
+    // Fall back to synthetic demo profile
+  }
 
-  return { actor: mapActor(profile), supabase };
+  // Guaranteed fallback actor in DEMO_MODE so API routes and cockpits never fail with 401
+  const syntheticActor: Actor = {
+    id: `20000000-0000-4000-8000-${role.toLowerCase().replace(/_/g, '').slice(0, 12).padEnd(12, '0')}`,
+    email,
+    fullName: DEMO_ROLE_NAMES[role] || 'Demo User',
+    role,
+    requesterKind: role === 'REQUESTER' ? 'STUDENT' : role === 'DEPARTMENT_MANAGER' ? 'FACULTY' : null,
+    departmentId: ['TECHNICIAN', 'DEPARTMENT_MANAGER'].includes(role)
+      ? '31000000-0000-4000-8000-000000000001'
+      : null,
+  };
+
+  return { actor: syntheticActor, supabase };
 }

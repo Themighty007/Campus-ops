@@ -1,7 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
-import { CheckCircle2, Clock, AlertTriangle, Upload, Plus, Camera, Sparkles, Send, MapPin, Tag } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import {
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Upload,
+  Plus,
+  Camera,
+  Sparkles,
+  Send,
+  MapPin,
+  Tag,
+  X,
+  FileText,
+  Shield,
+  Zap,
+  Users,
+} from 'lucide-react';
 import { PersonaProfile } from '@/types/personas';
 
 interface StudentQuery {
@@ -12,18 +28,28 @@ interface StudentQuery {
   status: 'RESOLVED' | 'IN_PROGRESS' | 'SCHEDULED' | 'TRIAGED';
   date: string;
   urgency: 'NORMAL' | 'URGENT' | 'EXAM_BLOCKING';
-  hasPhoto?: boolean;
+  photoName?: string;
+  photoUrl?: string;
   resolutionNote?: string;
+  assignedTech?: string;
 }
 
 interface StudentDashboardProps {
   persona: PersonaProfile;
   onOpenReportModal?: () => void;
+  onOpenCockpit?: () => void;
 }
 
-export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) => {
+export const StudentDashboard: React.FC<StudentDashboardProps> = ({
+  persona,
+  onOpenReportModal,
+  onOpenCockpit,
+}) => {
   // Notification banner visibility
   const [showResolvedAlert, setShowResolvedAlert] = useState(true);
+
+  // Interactive KPI modal state
+  const [activeModal, setActiveModal] = useState<'queries' | 'resolution' | 'seats' | 'status' | null>(null);
 
   // Queries list
   const [queries, setQueries] = useState<StudentQuery[]>([
@@ -35,8 +61,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
       status: 'RESOLVED',
       date: 'Today, 21:15',
       urgency: 'EXAM_BLOCKING',
-      hasPhoto: true,
-      resolutionNote: 'Continuity relocated to Library Hall; 63A MCB replaced by Tech Rajesh.',
+      photoName: 'hall_b204_panel_tripped.jpg',
+      photoUrl: '/assets/aistudio/image_7671df28.png',
+      assignedTech: 'Rajesh Kumar (Lead Tech)',
+      resolutionNote: 'Continuity relocated to Library Hall A; 63A MCB replaced & verified.',
     },
     {
       id: 'QRY-1092',
@@ -46,8 +74,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
       status: 'IN_PROGRESS',
       date: 'Yesterday, 18:30',
       urgency: 'NORMAL',
-      hasPhoto: false,
-      resolutionNote: 'Assigned to Tech Anand · Cat6 cable test scheduled',
+      photoName: 'router_power_light.jpg',
+      assignedTech: 'Rajesh Kumar (Lead Tech)',
+      resolutionNote: 'Cat6 cable test scheduled · AP replacement on standby',
     },
     {
       id: 'QRY-0984',
@@ -57,7 +86,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
       status: 'SCHEDULED',
       date: '28 Oct 2026',
       urgency: 'NORMAL',
-      hasPhoto: true,
+      assignedTech: 'Civil Operations',
+      resolutionNote: 'Replacement valve scheduled for weekend maintenance.',
     },
   ]);
 
@@ -66,10 +96,41 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
   const [formCategory, setFormCategory] = useState('ELECTRICAL');
   const [formTitle, setFormTitle] = useState('');
   const [formUrgency, setFormUrgency] = useState<'NORMAL' | 'URGENT' | 'EXAM_BLOCKING'>('NORMAL');
-  const [formPhotoAttached, setFormPhotoAttached] = useState(false);
+
+  // Real File Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedPhoto, setAttachedPhoto] = useState<{ name: string; url: string; size: string } | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [selectedPhotoModal, setSelectedPhotoModal] = useState<string | null>(null);
 
+  // Live End-to-End Walkthrough Simulator state
+  const [simStep, setSimStep] = useState<number | null>(null);
+
+  // File picker handler
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setAttachedPhoto({
+        name: file.name,
+        url,
+        size: `${(file.size / 1024).toFixed(1)} KB`,
+      });
+    }
+  };
+
+  // Sample photo attachment shortcut
+  const handleSelectSamplePhoto = (sampleName: string) => {
+    setAttachedPhoto({
+      name: sampleName,
+      url: '/assets/aistudio/image_7671df28.png',
+      size: '245.8 KB',
+    });
+  };
+
+  // Submit query
   const handleSubmitQuery = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim()) return;
@@ -84,16 +145,35 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
         status: 'TRIAGED',
         date: 'Just now',
         urgency: formUrgency,
-        hasPhoto: formPhotoAttached,
-        resolutionNote: 'AI Triage completed: Routed to Facilities queue',
+        photoName: attachedPhoto ? attachedPhoto.name : undefined,
+        photoUrl: attachedPhoto ? attachedPhoto.url : undefined,
+        assignedTech: 'Auto-Routing to Rajesh Kumar',
+        resolutionNote: 'Gemini Triage completed: P1 Priority assigned',
       };
       setQueries([newQry, ...queries]);
       setFormTitle('');
-      setFormPhotoAttached(false);
+      setAttachedPhoto(null);
       setSubmitting(false);
       setSubmitSuccess(true);
-      setTimeout(() => setSubmitSuccess(false), 3000);
+      setTimeout(() => setSubmitSuccess(false), 3500);
     }, 600);
+  };
+
+  // End-to-End Simulation Runner
+  const runLiveSimulation = () => {
+    setSimStep(1); // 1: Student submits
+    setTimeout(() => {
+      setSimStep(2); // 2: AI Evaluates Blast Radius
+      setTimeout(() => {
+        setSimStep(3); // 3: Supervisor Approves
+        setTimeout(() => {
+          setSimStep(4); // 4: Tech Replaces MCB
+          setTimeout(() => {
+            setSimStep(5); // 5: Completed Receipt
+          }, 1200);
+        }, 1200);
+      }, 1200);
+    }, 1000);
   };
 
   return (
@@ -133,14 +213,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
       )}
 
       {/* =========================================================================
-          TOP ROW: 4 SOCIAC-STYLE KPI CARDS (Mint, Yellow, Pink, Cyan)
+          TOP ROW: 4 SOCIAC-STYLE KPI CARDS (Clickable with interactive popups!)
       ========================================================================= */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Mint Green */}
-        <div className="card-brutal p-4 bg-[#DCFCE7] flex flex-col justify-between">
+        {/* Card 1: My Queries (Clickable) */}
+        <div
+          onClick={() => setActiveModal('queries')}
+          className="card-brutal p-4 bg-[#DCFCE7] flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-transform group"
+          title="Click to view all your complaints & queries"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase text-zinc-700">My Queries</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <span className="text-[10px] font-mono bg-white px-1.5 py-0.5 rounded border border-black font-bold">
+              CLICK 🔍
+            </span>
           </div>
           <div className="mt-2">
             <span className="text-3xl font-black text-[#18181B]">{queries.length}</span>
@@ -148,20 +234,30 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
           </div>
         </div>
 
-        {/* Card 2: Pastel Yellow */}
-        <div className="card-brutal p-4 bg-[#FEF9C3] flex flex-col justify-between">
+        {/* Card 2: Avg Resolution (Clickable) */}
+        <div
+          onClick={() => setActiveModal('resolution')}
+          className="card-brutal p-4 bg-[#FEF9C3] flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-transform group"
+          title="Click to view resolution speed breakdown"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase text-zinc-700">Avg Resolution</span>
             <span className="text-xs font-mono font-bold text-amber-800">↓ 18%</span>
           </div>
           <div className="mt-2">
-            <span className="text-3xl font-black text-[#18181B]">34<span className="text-base font-normal">m</span></span>
+            <span className="text-3xl font-black text-[#18181B]">
+              34<span className="text-base font-normal">m</span>
+            </span>
             <p className="text-[11px] font-bold text-amber-900 mt-1">Under 45m SLA Target</p>
           </div>
         </div>
 
-        {/* Card 3: Pastel Pink */}
-        <div className="card-brutal p-4 bg-[#FCE7F3] flex flex-col justify-between">
+        {/* Card 3: Protected Seats (Clickable) */}
+        <div
+          onClick={() => setActiveModal('seats')}
+          className="card-brutal p-4 bg-[#FCE7F3] flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-transform group"
+          title="Click to view exam protection details"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase text-zinc-700">Protected Seats</span>
             <span className="text-xs">🛡️</span>
@@ -172,8 +268,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
           </div>
         </div>
 
-        {/* Card 4: Pastel Cyan */}
-        <div className="card-brutal p-4 bg-[#E0F2FE] flex flex-col justify-between">
+        {/* Card 4: Campus Status (Clickable) */}
+        <div
+          onClick={() => setActiveModal('status')}
+          className="card-brutal p-4 bg-[#E0F2FE] flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-transform group"
+          title="Click to view campus infrastructure health"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase text-zinc-700">Campus Status</span>
             <span className="badge-sticker bg-white text-[9px]">NORMAL</span>
@@ -205,7 +305,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
                 </p>
               </div>
             </div>
-            <span className="badge-sticker bg-[#86EFAC] text-[10px]">AI TRIAGED</span>
+            <button
+              type="button"
+              onClick={runLiveSimulation}
+              className="badge-sticker bg-[#F472B6] text-white text-[10px] hover:scale-105 transition-transform"
+              title="Test end-to-end incident lifecycle"
+            >
+              ⚡ DEMO SIMULATOR
+            </button>
           </div>
 
           <form onSubmit={handleSubmitQuery} className="space-y-3.5">
@@ -277,37 +384,81 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
               </div>
             </div>
 
-            {/* Photo Attachment (Optional) */}
+            {/* REAL PHOTO ATTACHMENT WITH NATIVE FILE PICKER */}
             <div className="pt-1">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-black uppercase text-zinc-600 flex items-center gap-1.5">
                   <Camera className="w-3.5 h-3.5 text-zinc-500" />
                   <span>Attach Photo Evidence</span>
                   <span className="text-[10px] text-zinc-400 font-normal lowercase">(optional)</span>
                 </label>
-                {formPhotoAttached && (
-                  <span className="text-[10px] font-mono text-emerald-700 font-bold">
-                    ✓ Photo Attached (tripped_breaker.jpg)
-                  </span>
-                )}
+
+                {/* Quick sample photo shortcuts */}
+                <div className="flex items-center gap-1 text-[10px]">
+                  <span className="text-zinc-400">Quick sample:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSamplePhoto('tripped_mcb_panel.jpg')}
+                    className="underline text-zinc-600 hover:text-black font-mono"
+                  >
+                    MCB Panel
+                  </button>
+                  <span className="text-zinc-300">·</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSamplePhoto('wifi_router_fail.jpg')}
+                    className="underline text-zinc-600 hover:text-black font-mono"
+                  >
+                    Router
+                  </button>
+                </div>
               </div>
 
+              {/* Dropzone that opens real OS file picker */}
               <div
-                onClick={() => setFormPhotoAttached(!formPhotoAttached)}
+                onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-all ${
-                  formPhotoAttached
+                  attachedPhoto
                     ? 'border-[#86EFAC] bg-[#DCFCE7]/40'
                     : 'border-zinc-300 hover:border-[#18181B] bg-zinc-50'
                 }`}
               >
-                <div className="flex items-center justify-center gap-2 text-xs text-zinc-600">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>
-                    {formPhotoAttached
-                      ? 'Click to remove attached photo'
-                      : 'Click to attach disruption photo (or use sample preview)'}
-                  </span>
-                </div>
+                {attachedPhoto ? (
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📸</span>
+                      <div className="text-left">
+                        <span className="font-bold text-[#18181B] block">{attachedPhoto.name}</span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{attachedPhoto.size} · Ready to submit</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAttachedPhoto(null);
+                      }}
+                      className="px-2 py-0.5 bg-white border border-black rounded text-[10px] font-bold text-red-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-2 text-xs text-zinc-600">
+                    <Upload className="w-4 h-4 text-zinc-500" />
+                    <span>
+                      <strong className="text-[#18181B]">Click to browse files</strong> on your device (JPG, PNG)
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -335,7 +486,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
           </form>
         </div>
 
-        {/* RIGHT: TOP CORNER VISUAL GRAPH WIDGET (Sociac / Bruddle Style) */}
+        {/* RIGHT: TOP CORNER VISUAL GRAPH WIDGET */}
         <div className="card-brutal p-4 bg-white flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
@@ -345,16 +496,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
               <span className="badge-sticker bg-[#FEF9C3] text-[9px]">LAST 7 DAYS</span>
             </div>
 
-            {/* Mini SVG Line & Bar Chart */}
             <div className="mt-4">
               <div className="flex items-baseline justify-between mb-2">
-                <span className="text-xl font-black text-[#18181B]">34m <span className="text-[10px] text-emerald-600 font-bold">Avg</span></span>
+                <span className="text-xl font-black text-[#18181B]">
+                  34m <span className="text-[10px] text-emerald-600 font-bold">Avg</span>
+                </span>
                 <span className="text-[10px] font-mono text-zinc-500">Fastest: 12m</span>
               </div>
 
-              {/* Clean Responsive SVG Curve */}
+              {/* Bar Columns */}
               <div className="h-28 w-full bg-[#FAF9F5] border border-zinc-200 rounded-lg p-2 relative flex items-end justify-between gap-1">
-                {/* Visual Bar Columns */}
                 {[
                   { day: 'Mon', h: '60%', val: '45m' },
                   { day: 'Tue', h: '45%', val: '38m' },
@@ -401,7 +552,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
           <span className="text-[11px] font-mono text-zinc-500">Live Status Feed</span>
         </div>
 
-        {/* Clean Sociac Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -464,10 +614,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
                     {q.date}
                   </td>
                   <td className="py-3 px-3">
-                    {q.hasPhoto ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
-                        📷 Attached
-                      </span>
+                    {q.photoName ? (
+                      <button
+                        onClick={() => setSelectedPhotoModal(q.photoUrl || '/assets/aistudio/image_7671df28.png')}
+                        className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 hover:bg-emerald-100"
+                      >
+                        📷 {q.photoName.slice(0, 10)}...
+                      </button>
                     ) : (
                       <span className="text-[10px] font-mono text-zinc-400">None</span>
                     )}
@@ -478,6 +631,259 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ persona }) =
           </table>
         </div>
       </div>
+
+      {/* =========================================================================
+          INTERACTIVE POPUPS FOR THE 4 TOP KPI BOXES
+      ========================================================================= */}
+      {/* 1. My Queries Modal */}
+      {activeModal === 'queries' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl p-5">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
+              <span className="font-black text-sm uppercase">My Disruption Queries ({queries.length})</span>
+              <button
+                onClick={() => setActiveModal(null)}
+                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="py-4 space-y-2.5 max-h-72 overflow-y-auto">
+              {queries.map((q) => (
+                <div key={q.id} className="p-3 bg-white border-2 border-black rounded-xl">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-mono font-bold text-black">{q.id} · {q.room}</span>
+                    <span className="badge-sticker bg-[#DCFCE7] text-[9px]">{q.status}</span>
+                  </div>
+                  <p className="text-xs font-bold mt-1 text-zinc-800">{q.title}</p>
+                  <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{q.resolutionNote}</p>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setActiveModal(null)}
+              className="w-full py-2 btn-brutal-yellow text-xs font-black uppercase shadow-brutal-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Avg Resolution Modal */}
+      {activeModal === 'resolution' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl p-5">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
+              <span className="font-black text-sm uppercase">SLA Resolution Performance</span>
+              <button
+                onClick={() => setActiveModal(null)}
+                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="py-4 space-y-3 text-xs">
+              <div className="p-3 bg-[#FEF9C3] rounded-xl border border-black">
+                <span className="font-black block">Campus SLA Target: 45 Minutes</span>
+                <p className="text-zinc-700 mt-1">Your queries are resolved in an average of 34 minutes (18% faster than SLA target).</p>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-black space-y-1 text-[11px] font-mono">
+                <div>Fastest Relocation: <strong>12 minutes (Hall B-204)</strong></div>
+                <div>Technician On-Site Time: <strong>8 minutes</strong></div>
+                <div>Verified Resolution Rate: <strong>100%</strong></div>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveModal(null)}
+              className="w-full py-2 btn-brutal-yellow text-xs font-black uppercase shadow-brutal-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Protected Seats Modal */}
+      {activeModal === 'seats' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl p-5">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
+              <span className="font-black text-sm uppercase">Academic Activity Continuity</span>
+              <button
+                onClick={() => setActiveModal(null)}
+                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="py-4 space-y-3 text-xs">
+              <div className="p-3 bg-[#FCE7F3] rounded-xl border border-black">
+                <span className="font-black block text-pink-950">180 Students Protected</span>
+                <p className="text-zinc-700 mt-1">When Hall B-204 experienced power failure, 180 EE301 examination candidates were relocated seamlessly.</p>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-black text-[11px] font-mono space-y-1">
+                <div>Origin Room: <strong>Hall B-204 (Tripped)</strong></div>
+                <div>Destination Room: <strong>Library Hall A (220 Cap)</strong></div>
+                <div>Exam Delay: <strong>0 Minutes (Exam On-Time)</strong></div>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveModal(null)}
+              className="w-full py-2 btn-brutal-pink text-xs font-black uppercase shadow-brutal-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Campus Status Modal */}
+      {activeModal === 'status' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-[#FAF9F5] border-[3px] border-[#18181B] rounded-2xl shadow-brutal-xl p-5">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
+              <span className="font-black text-sm uppercase">Campus Grid Reliability</span>
+              <button
+                onClick={() => setActiveModal(null)}
+                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="py-4 space-y-2 text-xs">
+              <div className="p-2.5 bg-white rounded-lg border border-black flex justify-between">
+                <span>Electrical Distribution Grid</span>
+                <span className="font-bold text-emerald-700">99.8% Uptime</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-lg border border-black flex justify-between">
+                <span>Campus Wi-Fi & Backbone LAN</span>
+                <span className="font-bold text-emerald-700">99.9% Uptime</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-lg border border-black flex justify-between">
+                <span>HVAC & Climate Control</span>
+                <span className="font-bold text-sky-700">99.1% Uptime</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveModal(null)}
+              className="w-full py-2 btn-brutal-yellow text-xs font-black uppercase shadow-brutal-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Viewer Modal */}
+      {selectedPhotoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-white border-[3px] border-black rounded-2xl shadow-brutal-xl p-5">
+            <div className="flex items-center justify-between pb-2 border-b-2 border-black">
+              <span className="font-black text-xs uppercase">Photo Evidence Preview</span>
+              <button
+                onClick={() => setSelectedPhotoModal(null)}
+                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="my-4 bg-zinc-900 rounded-xl p-4 text-center text-white font-mono text-xs">
+              <div className="h-44 bg-zinc-800 rounded flex flex-col justify-between p-3 border border-zinc-700">
+                <span className="text-amber-400 font-bold">PANEL DB-2B (HALL B-204)</span>
+                <span className="text-2xl text-red-500 font-black">63A TRIP</span>
+                <span className="text-[10px] text-zinc-400">Attached by Requester</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedPhotoModal(null)}
+              className="w-full py-2 btn-brutal-yellow text-xs font-black uppercase shadow-brutal-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* End-to-End Simulation Modal */}
+      {simStep !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg bg-[#FAF9F5] border-[3px] border-black rounded-2xl shadow-brutal-xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-black">
+              <div className="flex items-center gap-2">
+                <span className="badge-sticker bg-[#FDE047] text-xs">LIVE END-TO-END DEMO</span>
+                <h3 className="font-black text-sm uppercase">Incident Lifecycle Engine</h3>
+              </div>
+              <button
+                onClick={() => setSimStep(null)}
+                className="w-7 h-7 rounded-lg bg-zinc-100 border-2 border-black flex items-center justify-center font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {/* Step 1 */}
+              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 1 ? 'bg-[#DCFCE7]' : 'bg-zinc-100'}`}>
+                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">1</span>
+                <div>
+                  <span className="font-bold text-[#18181B] block">Student Report Ingested</span>
+                  <span className="text-zinc-600 text-[11px]">"Power off in B-204. Exam in 30 mins."</span>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 2 ? 'bg-[#DCFCE7]' : 'bg-zinc-100'}`}>
+                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">2</span>
+                <div>
+                  <span className="font-bold text-[#18181B] block">AI Calculates Blast Radius & Plans</span>
+                  <span className="text-zinc-600 text-[11px]">Library Hall A evaluated; passes 4 constraints.</span>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 3 ? 'bg-[#DCFCE7]' : 'bg-zinc-100'}`}>
+                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">3</span>
+                <div>
+                  <span className="font-bold text-[#18181B] block">Human-in-the-Loop Supervisor Approves</span>
+                  <span className="text-zinc-600 text-[11px]">Chief Controller executes atomic DB commit.</span>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 4 ? 'bg-[#DCFCE7]' : 'bg-zinc-100'}`}>
+                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">4</span>
+                <div>
+                  <span className="font-bold text-[#18181B] block">Technician Dispatched with Reserved MCB</span>
+                  <span className="text-zinc-600 text-[11px]">Rajesh Kumar completes repair & posts photo.</span>
+                </div>
+              </div>
+
+              {/* Step 5 */}
+              <div className={`p-3 rounded-xl border-2 border-black flex items-center gap-3 ${simStep >= 5 ? 'bg-[#FEF9C3]' : 'bg-zinc-100'}`}>
+                <span className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-mono font-bold text-xs">5</span>
+                <div>
+                  <span className="font-bold text-emerald-950 block">Student Receives Resolution Receipt</span>
+                  <span className="text-emerald-900 text-[11px]">"This issue has been solved. Thank you for notifying us."</span>
+                </div>
+              </div>
+            </div>
+
+            {simStep === 5 ? (
+              <button
+                onClick={() => setSimStep(null)}
+                className="w-full py-2 btn-brutal-green text-xs font-black uppercase shadow-brutal-sm"
+              >
+                Simulation Complete · Return to Dashboard
+              </button>
+            ) : (
+              <div className="text-center font-mono text-xs text-zinc-500 animate-pulse">
+                Running automated campus recovery pipeline...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
